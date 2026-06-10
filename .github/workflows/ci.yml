@@ -134,10 +134,16 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: pip install -r backend/requirements.txt
       - name: Run migrations
-        run: alembic upgrade head &
+        run: alembic upgrade head
         working-directory: backend
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
+          DATABASE_URL: postgresql+asyncpg://app:app_secret@localhost:5432/expertise_matrix_test
+          SECRET_KEY: ${{ env.SECRET_KEY }}
+      - name: Seed database
+        run: python -m scripts.seed
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://app:app_secret@localhost:5432/expertise_matrix_test
           SECRET_KEY: ${{ env.SECRET_KEY }}
       - name: Start backend
         run: |
@@ -145,7 +151,7 @@ jobs:
           sleep 3
         working-directory: backend
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
+          DATABASE_URL: postgresql+asyncpg://app:app_secret@localhost:5432/expertise_matrix_test
           SECRET_KEY: ${{ env.SECRET_KEY }}
       - run: cd frontend && npm ci
       - name: Build and start frontend

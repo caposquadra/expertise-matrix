@@ -80,13 +80,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: pip install -r backend/requirements.txt pytest-cov
-      - run: mkdir -p backend/tests/unit
       - name: Run backend tests
         run: pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
         working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test
           SECRET_KEY: ${{ env.SECRET_KEY }}
+          PYTHONPATH: .
       - uses: codecov/codecov-action@v5
         with:
           file: ./coverage.xml

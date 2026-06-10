@@ -1,16 +1,23 @@
 import asyncio
+import sys
+from pathlib import Path
 from typing import AsyncGenerator
 
-import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+# Ensure backend/ is on sys.path for CI and local development
+_backend_root = str(Path(__file__).resolve().parent.parent)
+if _backend_root not in sys.path:
+    sys.path.insert(0, _backend_root)
 
-from app.core.database import Base, get_db
-from app.core.security import hash_password
-from app.main import app
-from app.models import Employee, Skill
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy import text  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
+
+from app.core.database import Base, get_db  # noqa: E402
+from app.core.security import hash_password  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models import Employee, Skill  # noqa: E402
 
 TEST_DB_URL = "postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test"
 

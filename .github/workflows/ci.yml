@@ -67,7 +67,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready -U app -d expertise_matrix_test
+          --health-cmd "pg_isready -U app -d expertise_matrix_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -76,11 +76,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       - run: pip install -r backend/requirements.txt pytest-cov
       - run: mkdir -p backend/tests/unit
       - run: pytest backend/tests/ -v --tb=short --cov=backend/app --cov-report=xml --cov-report=term-missing
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
+          DATABASE_URL: postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test
           SECRET_KEY: ${{ env.SECRET_KEY }}
       - uses: codecov/codecov-action@v5
         with:
@@ -115,7 +118,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready -U app -d expertise_matrix_test
+          --health-cmd "pg_isready -U app -d expertise_matrix_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5

@@ -1,5 +1,4 @@
 import asyncio
-import subprocess
 from typing import AsyncGenerator
 
 import pytest
@@ -16,10 +15,14 @@ from app.models import Employee, Skill
 TEST_DB_URL = "postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test"
 
 seed_engine = create_async_engine(TEST_DB_URL, echo=False)
-seed_session_factory = async_sessionmaker(seed_engine, class_=AsyncSession, expire_on_commit=False)
+seed_session_factory = async_sessionmaker(
+    seed_engine, class_=AsyncSession, expire_on_commit=False
+)
 
 test_engine = create_async_engine(TEST_DB_URL, echo=False)
-test_session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+test_session_factory = async_sessionmaker(
+    test_engine, class_=AsyncSession, expire_on_commit=False
+)
 
 
 @pytest.fixture(scope="session")
@@ -36,13 +39,16 @@ async def setup_database():
             await conn.execute(text("SELECT 1"))
     except Exception:
         master_engine = create_async_engine(
-            TEST_DB_URL.replace("expertise_matrix_test", "postgres"), isolation_level="AUTOCOMMIT"
+            TEST_DB_URL.replace("expertise_matrix_test", "postgres"),
+            isolation_level="AUTOCOMMIT",
         )
         async with master_engine.connect() as conn:
             await conn.execute(text("CREATE DATABASE expertise_matrix_test"))
         await master_engine.dispose()
     proc = await asyncio.create_subprocess_exec(
-        "alembic", "upgrade", "head",
+        "alembic",
+        "upgrade",
+        "head",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -124,7 +130,12 @@ async def expert_user(setup_database) -> Employee:
 @pytest_asyncio.fixture(scope="session")
 async def skill(setup_database) -> Skill:
     async with seed_session_factory() as session:
-        s = Skill(name="Linux", category="ОС и инфраструктура", description="Test", sort_order=1)
+        s = Skill(
+            name="Linux",
+            category="ОС и инфраструктура",
+            description="Test",
+            sort_order=1,
+        )
         session.add(s)
         await session.commit()
         await session.refresh(s)
@@ -135,7 +146,9 @@ async def skill(setup_database) -> Skill:
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with test_engine.connect() as connection:
         async with connection.begin() as transaction:
-            async_session = async_sessionmaker(bind=connection, class_=AsyncSession, expire_on_commit=False)
+            async_session = async_sessionmaker(
+                bind=connection, class_=AsyncSession, expire_on_commit=False
+            )
             async with async_session() as session:
                 yield session
             await transaction.rollback()
@@ -154,7 +167,9 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 
 async def get_token(client: AsyncClient, email: str, password: str) -> str:
-    r = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
+    r = await client.post(
+        "/api/v1/auth/login", json={"email": email, "password": password}
+    )
     assert r.status_code == 200
     return r.json()["access_token"]
 

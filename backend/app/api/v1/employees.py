@@ -1,0 +1,204 @@
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_admin_user, get_current_user
+from app.api.v1.constants import GRADE_TARGETS
+from app.core.database import get_db
+from app.core.security import hash_password
+from app.models import Assessment, Employee, Skill
+from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/employees", tags=["employees"])
+
+
+class ScoresBatchRequest(BaseModel):
+    employee_ids: list[str]
+
+
+class EmployeeScoreOut(BaseModel):
+    current_score: int
+    target_score: int | None
+    total_weight: int
+    assessed_weight: int
+
+
+def _compute_score(
+    skills: list[Skill], assessments: list[Assessment], grade: str | None
+) -> EmployeeScoreOut:
+    skill_map = {s.id: s.weight for s in skills}
+    all_weight = sum(s.weight for s in skills)
+    cur_sum = 0
+    assessed_weight = 0
+
+    for a in assessments:
+        w = skill_map.get(a.skill_id, 1)
+        effective = a.manager_level if a.manager_level is not None else a.self_level
+        if effective is not None:
+            cur_sum += effective * w
+            assessed_weight += w
+
+    target = GRADE_TARGETS.get(grade) if grade else None
+    return EmployeeScoreOut(
+        current_score=cur_sum,
+        target_score=target * all_weight if target else None,
+        total_weight=all_weight,
+        assessed_weight=assessed_weight,
+    )
+
+
+@router.get("", response_model=list[EmployeeOut])
+async def list_employees(
+    db: AsyncSession = Depends(get_db),
+    current_user: Employee = Depends(get_current_user),
+):
+    """List employees. Admins and managers see all; employees see only themselves."""
+    if current_user.role in ("admin", "manager"):
+        result = await db.execute(select(Employee).order_by(Employee.full_name))
+        return [EmployeeOut.model_validate(u) for u in result.scalars().all()]
+    return [EmployeeOut.model_validate(current_user)]
+
+
+@router.get("/{employee_id}", response_model=EmployeeOut)
+async def get_employee(
+    employee_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Employee = Depends(get_current_user),
+):
+    """Get a single employee by ID."""
+    result = await db.execute(select(Employee).where(Employee.id == employee_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+    if current_user.role not in ("admin", "manager") and current_user.id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+    return EmployeeOut.model_validate(user)
+
+
+@router.post("", response_model=EmployeeOut, status_code=status.HTTP_201_CREATED)
+async def create_employee(
+    body: EmployeeCreate,
+    db: AsyncSession = Depends(get_db),
+    admin: Employee = Depends(get_admin_user),
+):
+    """Create a new employee (admin only)."""
+    result = await db.execute(select(Employee).where(Employee.email == body.email))
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email already exists"
+        )
+
+    user = Employee(
+        email=body.email,
+        password_hash=hash_password(body.password),
+        full_name=body.full_name,
+        role=body.role,
+        grade=body.grade,
+        team_id=body.team_id,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    logger.info("Admin %s created employee %s (%s)", admin.email, user.email, user.role)
+    return EmployeeOut.model_validate(user)
+
+
+@router.patch("/{employee_id}", response_model=EmployeeOut)
+async def update_employee(
+    employee_id: str,
+    body: EmployeeUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: Employee = Depends(get_admin_user),
+):
+    """Update an employee (admin only). Supports partial updates."""
+    result = await db.execute(select(Employee).where(Employee.id == employee_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+
+    update_data = body.model_dump(exclude_unset=True)
+    if "password" in update_data:
+        update_data["password_hash"] = hash_password(update_data.pop("password"))
+        user.token_version += 1
+
+    for field, value in update_data.items():
+        setattr(user, field, value)
+
+    await db.commit()
+    await db.refresh(user)
+    logger.info("Admin %s updated employee %s", admin.email, user.email)
+    return EmployeeOut.model_validate(user)
+
+
+@router.get("/{employee_id}/score", response_model=EmployeeScoreOut)
+async def get_employee_score(
+    employee_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Employee = Depends(get_current_user),
+):
+    """Get weighted score for an employee. Admins/managers see any; employees see own."""
+    result = await db.execute(select(Employee).where(Employee.id == employee_id))
+    emp = result.scalar_one_or_none()
+    if emp is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+    if current_user.role not in ("admin", "manager") and current_user.id != emp.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
+    skills_result = await db.execute(select(Skill).where(Skill.is_active))
+    skills = list(skills_result.scalars().all())
+
+    assessments_result = await db.execute(
+        select(Assessment).where(Assessment.employee_id == employee_id)
+    )
+    assessments = list(assessments_result.scalars().all())
+
+    return _compute_score(skills, assessments, emp.grade)
+
+
+@router.post("/scores", response_model=dict[str, EmployeeScoreOut])
+async def get_bulk_scores(
+    body: ScoresBatchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Employee = Depends(get_current_user),
+):
+    """Get weighted scores for multiple employees in one request."""
+    if current_user.role not in ("admin", "manager"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
+    skills_result = await db.execute(select(Skill).where(Skill.is_active))
+    skills = list(skills_result.scalars().all())
+
+    employees = await db.execute(
+        select(Employee).where(Employee.id.in_(body.employee_ids))
+    )
+    employees_map = {str(e.id): e for e in employees.scalars().all()}
+
+    result: dict[str, EmployeeScoreOut] = {}
+    for eid in body.employee_ids:
+        emp = employees_map.get(eid)
+        if emp is None:
+            continue
+        assessments_result = await db.execute(
+            select(Assessment).where(Assessment.employee_id == eid)
+        )
+        assessments = list(assessments_result.scalars().all())
+        result[eid] = _compute_score(skills, assessments, emp.grade)
+
+    return result

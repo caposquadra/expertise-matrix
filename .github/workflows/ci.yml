@@ -154,10 +154,10 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://app:app_secret@localhost:5432/expertise_matrix_test
           SECRET_KEY: ${{ env.SECRET_KEY }}
       - run: cd frontend && npm ci
-      - name: Build and start frontend
+      - name: Start frontend dev server
         run: |
-          cd frontend && npx vite build && npx vite preview --port 3000 &
-          sleep 2
+          cd frontend && VITE_PROXY_TARGET=http://localhost:8000 npx vite --port 3000 &
+          sleep 3
       - run: cd frontend && npx playwright install chromium
       - run: cd frontend && npx playwright test
         env:

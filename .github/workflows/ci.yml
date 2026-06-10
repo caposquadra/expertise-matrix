@@ -81,7 +81,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: pip install -r backend/requirements.txt pytest-cov
       - run: mkdir -p backend/tests/unit
-      - run: pytest backend/tests/ -v --tb=short --cov=backend/app --cov-report=xml --cov-report=term-missing
+      - name: Run backend tests
+        run: pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+        working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test
           SECRET_KEY: ${{ env.SECRET_KEY }}
@@ -131,14 +133,17 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: pip install -r backend/requirements.txt
-      - run: cd backend && alembic upgrade head &
+      - name: Run migrations
+        run: alembic upgrade head &
+        working-directory: backend
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           SECRET_KEY: ${{ env.SECRET_KEY }}
       - name: Start backend
         run: |
-          cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 3
+        working-directory: backend
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           SECRET_KEY: ${{ env.SECRET_KEY }}

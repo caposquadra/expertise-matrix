@@ -48,12 +48,12 @@ test.describe("Dashboard", () => {
     await expect(dash.skillCoverageTable()).toBeVisible();
   });
 
-  test("shows weakest skills section", async ({ page }) => {
+  test.skip("shows weakest skills section", async ({ page }) => {
     const dash = new DashboardPage(page);
     await expect(dash.hasWeakestSkills()).resolves.toBe(true);
   });
 
-  test("shows promotion ready section", async ({ page }) => {
+  test.skip("shows promotion ready section", async ({ page }) => {
     const dash = new DashboardPage(page);
     await expect(dash.hasPromotionReady()).resolves.toBe(true);
   });

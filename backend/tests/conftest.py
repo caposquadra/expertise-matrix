@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 from pathlib import Path
 from typing import AsyncGenerator
@@ -19,7 +20,10 @@ from app.core.security import hash_password  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Employee, Skill  # noqa: E402
 
-TEST_DB_URL = "postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test"
+TEST_DB_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test",
+)
 
 seed_engine = create_async_engine(TEST_DB_URL, echo=False)
 seed_session_factory = async_sessionmaker(

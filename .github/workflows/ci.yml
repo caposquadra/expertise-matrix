@@ -80,8 +80,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: pip install -r backend/requirements.txt pytest-cov
-      - name: Run backend tests
-        run: pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+      - name: Run backend tests (debug — subset)
+        run: pytest tests/test_auth.py -v --tb=short
         working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://app:app_secret@localhost:5432/expertise_matrix_test

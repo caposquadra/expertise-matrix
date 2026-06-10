@@ -84,7 +84,7 @@ jobs:
         run: pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test
+          DATABASE_URL: postgresql+asyncpg://app:app_secret@localhost:5432/expertise_matrix_test
           SECRET_KEY: ${{ env.SECRET_KEY }}
           PYTHONPATH: .
       - uses: codecov/codecov-action@v5

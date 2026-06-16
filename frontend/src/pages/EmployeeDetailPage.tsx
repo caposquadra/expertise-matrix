@@ -6,6 +6,7 @@ import { IconArrowLeft, IconStar } from "@tabler/icons-react";
 import client from "../api/client";
 import { translateRole, translateGrade } from "../constants";
 
+import { EmployeeProfileBlock } from "../components/EmployeeProfileBlock";
 import type { Skill, Assessment, Employee, Score } from "../types";
 
 const gradeLevel: Record<string, number> = { junior: 2, middle: 3, senior: 4 };
@@ -73,6 +74,8 @@ export function EmployeeDetailPage() {
           </div>
         </Group>
       </Card>
+
+      {id && <EmployeeProfileBlock employeeId={id} />}
 
       {score && (
         <Group mb="md" gap="md">

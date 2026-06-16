@@ -5,12 +5,18 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_admin_user, get_current_user
+from app.api.deps import get_admin_user, get_current_user, require_role
 from app.api.v1.constants import GRADE_TARGETS
 from app.core.database import get_db
 from app.core.security import hash_password
-from app.models import Assessment, Employee, Skill
-from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
+from app.models import Assessment, Employee, EmployeeProfile, Skill
+from app.schemas.employee import (
+    EmployeeCreate,
+    EmployeeOut,
+    EmployeeProfileOut,
+    EmployeeProfileUpdate,
+    EmployeeUpdate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -202,3 +208,91 @@ async def get_bulk_scores(
         result[eid] = _compute_score(skills, assessments, emp.grade)
 
     return result
+
+
+@router.get("/{employee_id}/profile", response_model=EmployeeProfileOut | None)
+async def get_employee_profile(
+    employee_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Employee = Depends(get_current_user),
+):
+    """Get extended profile for an employee. Manager sees any; employee sees own."""
+    result = await db.execute(select(Employee).where(Employee.id == employee_id))
+    emp = result.scalar_one_or_none()
+    if emp is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if current_user.role not in ("admin", "manager") and current_user.id != emp.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    profile_result = await db.execute(
+        select(EmployeeProfile).where(EmployeeProfile.employee_id == employee_id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    if profile is None:
+        return None
+
+    values = [
+        profile.experience,
+        profile.education,
+        profile.task_complexity,
+        profile.autonomy,
+        profile.communication,
+        profile.control,
+        profile.mentoring,
+        profile.responsibility,
+        profile.technical_competencies,
+    ]
+    grade = round(sum(values) / len(values), 1)
+
+    out = EmployeeProfileOut.model_validate(profile)
+    out.grade = grade
+    return out
+
+
+@router.put(
+    "/{employee_id}/profile",
+    response_model=EmployeeProfileOut,
+)
+async def update_employee_profile(
+    employee_id: str,
+    body: EmployeeProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    manager: Employee = Depends(require_role("admin", "manager")),
+):
+    """Create or update extended profile for an employee (manager only)."""
+    result = await db.execute(select(Employee).where(Employee.id == employee_id))
+    emp = result.scalar_one_or_none()
+    if emp is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    profile_result = await db.execute(
+        select(EmployeeProfile).where(EmployeeProfile.employee_id == employee_id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    if profile is None:
+        profile = EmployeeProfile(employee_id=emp.id)
+        db.add(profile)
+
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(profile, field, value)
+
+    await db.commit()
+    await db.refresh(profile)
+
+    values = [
+        profile.experience,
+        profile.education,
+        profile.task_complexity,
+        profile.autonomy,
+        profile.communication,
+        profile.control,
+        profile.mentoring,
+        profile.responsibility,
+        profile.technical_competencies,
+    ]
+    grade = round(sum(values) / len(values), 1)
+
+    out = EmployeeProfileOut.model_validate(profile)
+    out.grade = grade
+    return out

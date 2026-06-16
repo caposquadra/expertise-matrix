@@ -4,7 +4,15 @@ import asyncio
 
 from app.core.database import async_session_factory, engine
 from app.core.security import hash_password
-from app.models import Employee, Team, Skill, Assessment, ReviewCycle, ReviewAssessment
+from app.models import (
+    Employee,
+    EmployeeProfile,
+    Team,
+    Skill,
+    Assessment,
+    ReviewCycle,
+    ReviewAssessment,
+)
 
 
 SKILLS_DATA = [
@@ -244,10 +252,34 @@ async def seed():
                     )
                 )
         session.add_all(assessments)
+
+        profiles = []
+        for emp in employees:
+            profiles.append(
+                EmployeeProfile(
+                    employee_id=emp.id,
+                    organization="ВРМ",
+                    city="Санкт-Петербург",
+                    department="Департамент тестирования",
+                    subdivision="Отдел тестирования ВРМ",
+                    position="Инженер по тестированию",
+                    specialization="Автоматизация тестирования",
+                    experience=random.randint(8, 12),
+                    education=random.randint(8, 12),
+                    task_complexity=random.randint(8, 12),
+                    autonomy=random.randint(8, 12),
+                    communication=random.randint(8, 12),
+                    control=random.randint(8, 12),
+                    mentoring=random.randint(8, 12),
+                    responsibility=random.randint(8, 12),
+                    technical_competencies=random.randint(8, 12),
+                )
+            )
+        session.add_all(profiles)
         await session.commit()
 
     print(
-        f"Seeded: {len(employees)} employees, {len(skills)} skills, {len(assessments)} assessments"
+        f"Seeded: {len(employees)} employees, {len(skills)} skills, {len(assessments)} assessments, {len(profiles)} profiles"
     )
 
     await engine.dispose()

@@ -1,33 +1,31 @@
 import { useEffect, useState } from "react";
-import { Title, Card, Text, Group, Badge, Table, Loader, Center, Tabs, Avatar, Button, Progress } from "@mantine/core";
+import { Title, Card, Text, Group, Badge, Table, Loader, Center, Tabs, Avatar, Button, Box } from "@mantine/core";
 import { IconStar, IconHistory } from "@tabler/icons-react";
 import client from "../api/client";
 import { useAuth } from "../store/auth";
 import { translateRole, translateGrade } from "../constants";
 
 import { EmployeeProfileBlock } from "../components/EmployeeProfileBlock";
-import type { Skill, Assessment, HistoryEntry, Score } from "../types";
+import type { Skill, Assessment, HistoryEntry } from "../types";
 
 const fieldLabels: Record<string, string> = {
   self_level: "Самооценка", manager_level: "Оценка руководителя", target_level: "Целевой уровень",
 };
 
 const gradeTargetMap: Record<string, number> = {
-  junior: 2, middle: 3, senior: 4,
+  junior: 1, middle: 2, senior: 3,
 };
 
-const currentBadgeColor = (v: number | null, grade: string | null) => {
+const currentBadgeColor = (v: number | null, targetLevel: number | null) => {
   if (v == null) return "gray";
-  const expected = grade ? gradeTargetMap[grade] : null;
-  if (expected == null) {
-    if (v <= 1) return "red";
-    if (v <= 2) return "orange";
-    if (v <= 3) return "yellow";
-    return "green";
+  if (targetLevel != null) {
+    if (v >= targetLevel) return "green";
+    if (v >= targetLevel - 1) return "yellow";
+    return "red";
   }
-  if (v >= expected) return "green";
-  if (v === expected - 1) return "yellow";
-  return "red";
+  if (v < 2) return "red";
+  if (v < 3) return "yellow";
+  return "green";
 };
 
 export function EmployeePage() {
@@ -35,7 +33,6 @@ export function EmployeePage() {
   const isManager = user?.role === "admin" || user?.role === "manager";
   const [skills, setSkills] = useState<Skill[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [score, setScore] = useState<Score | null>(null);
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<Record<string, HistoryEntry[]>>({});
   const [historyLoading, setHistoryLoading] = useState<string | null>(null);
@@ -45,7 +42,6 @@ export function EmployeePage() {
     Promise.all([
       client.get("/skills").then((r) => setSkills(r.data)),
       client.get(`/assessments?employee_id=${user.id}`).then((r) => setAssessments(r.data)),
-      client.get(`/employees/${user.id}/score`).then((r) => setScore(r.data)),
     ]).catch((err) => {
       console.error("Failed to load profile", err);
     }).finally(() => setLoading(false));
@@ -67,6 +63,12 @@ export function EmployeePage() {
 
   const categories = [...new Set(skills.map((s) => s.category))];
 
+  const gradeOrder = ["junior", "middle", "senior"];
+  const currentGrade = user?.grade ?? "";
+  const currentGradeIdx = gradeOrder.indexOf(currentGrade);
+  const nextGrade = currentGradeIdx >= 0 && currentGradeIdx < gradeOrder.length - 1 ? gradeOrder[currentGradeIdx + 1] : null;
+  const nextGradeTarget = nextGrade ? gradeTargetMap[nextGrade] : 3;
+
   return (
     <>
       <Title order={2} mb="lg" fw={700}>Профиль</Title>
@@ -85,52 +87,9 @@ export function EmployeePage() {
         </Group>
       </Card>
 
-      {score && (
-        <Group mb="md" gap="md">
-          <Card padding="md" radius="lg" withBorder style={{ flex: 1 }}>
-            <Text size="xs" c="dimmed" mb={4}>Общий балл (текущий)</Text>
-            <Group gap={6}>
-              <Text fw={700} size="xl" c={score.current_score >= (score.target_score ?? 0) ? "green" : "orange"}>
-                {score.current_score}
-              </Text>
-              <Text size="sm" c="dimmed" fw={500}>баллов</Text>
-            </Group>
-          </Card>
-          <Card padding="md" radius="lg" withBorder style={{ flex: 1 }}>
-            <Text size="xs" c="dimmed" mb={4}>Цель по грейду</Text>
-            <Text fw={700} size="xl" c="indigo">
-              {score.target_score != null ? `${score.target_score} баллов` : "—"}
-            </Text>
-          </Card>
-          <Card padding="md" radius="lg" withBorder style={{ flex: 1 }}>
-            <Text size="xs" c="dimmed" mb={4}>Отставание</Text>
-            <Text fw={700} size="xl" c={score.target_score != null && score.current_score < score.target_score ? "red" : "green"}>
-              {score.target_score != null
-                ? `${score.target_score - score.current_score} баллов`
-                : "—"}
-            </Text>
-          </Card>
-        </Group>
-      )}
-
       {isManager && user && <EmployeeProfileBlock employeeId={user.id} />}
 
-      <Card padding="sm" radius="md" mb="md" withBorder>
-        <Group gap="lg">
-          <Group gap={6}>
-            <Badge color="green" variant="filled" size="sm">●</Badge>
-            <Text size="xs" c="dimmed">уровень соответствует грейду</Text>
-          </Group>
-          <Group gap={6}>
-            <Badge color="yellow" variant="filled" size="sm">●</Badge>
-            <Text size="xs" c="dimmed">на 1 шаг ниже грейда</Text>
-          </Group>
-          <Group gap={6}>
-            <Badge color="red" variant="filled" size="sm">●</Badge>
-            <Text size="xs" c="dimmed">на 2+ шага ниже грейда</Text>
-          </Group>
-        </Group>
-      </Card>
+
 
       <Tabs defaultValue="skills" variant="pills" radius="md">
         <Tabs.List mb="md">
@@ -145,15 +104,17 @@ export function EmployeePage() {
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                  <Table.Th w={220}>Навык</Table.Th>
-                    <Table.Th w={60} ta="center">Вес</Table.Th>
-                    <Table.Th w={220} ta="center">Текущий → Цель</Table.Th>
+                    <Table.Th>Навык</Table.Th>
+                    <Table.Th w={160} />
+                    <Table.Th w={70} ta="center">Текущий</Table.Th>
+                    <Table.Th w={60} ta="center">Цель</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {skills.filter((s) => s.category === cat).map((s) => {
                     const a = getAssess(s.id);
                     const cl = currentLevel(a);
+                    const col = currentBadgeColor(cl, a?.target_level ?? null);
                     return (
                       <Table.Tr key={s.id}>
                         <Table.Td fw={500}>
@@ -162,29 +123,23 @@ export function EmployeePage() {
                             {s.name}
                           </Group>
                         </Table.Td>
-                        <Table.Td ta="center">
-                          <Badge color="gray" variant="light" size="sm">{s.weight}</Badge>
-                        </Table.Td>
-                        <Table.Td ta="center">
-                          <Group gap={8} justify="center" wrap="nowrap">
-                            <Progress.Root w={130} size={20}>
-                              <Progress.Section
-                                value={((cl ?? 0) / 4) * 100}
-                                color={currentBadgeColor(cl, user?.grade ?? null)}
-                              />
-                              {a?.target_level != null && (cl ?? 0) < a.target_level && (
-                                <Progress.Section
-                                  value={((a.target_level - (cl ?? 0)) / 4) * 100}
-                                  color="gray"
-                                  striped
-                                />
-                              )}
-                            </Progress.Root>
-                            <Text size="sm" fw={600}>
-                              {cl ?? "—"} → {a?.target_level ?? "—"}
-                            </Text>
+                        <Table.Td>
+                          <Group gap={2} w={120} style={{ height: 14 }}>
+                            {Array.from({ length: 3 }, (_, i) => {
+                              let bg: string;
+                              if (i < (cl ?? 0)) {
+                                bg = `var(--mantine-color-${col}-6)`;
+                              } else if (i < (a?.target_level ?? nextGradeTarget)) {
+                                bg = "var(--mantine-color-gray-4)";
+                              } else {
+                                bg = "var(--mantine-color-gray-2)";
+                              }
+                              return <Box key={i} style={{ flex: 1, height: 14, borderRadius: 2, backgroundColor: bg }} />;
+                            })}
                           </Group>
                         </Table.Td>
+                        <Table.Td ta="center">{cl ?? "—"}</Table.Td>
+                        <Table.Td ta="center">{a?.target_level ?? nextGradeTarget}</Table.Td>
                       </Table.Tr>
                     );
                   })}

@@ -51,6 +51,9 @@ export interface Score {
   target_score: number | null;
   total_weight: number;
   assessed_weight: number;
+  profile_grade?: number | null;
+  profile_avg?: number | null;
+  position?: string | null;
 }
 
 export interface Goal {
@@ -139,6 +142,8 @@ export interface StatusCount {
 export interface EmployeeCycleInfo {
   employee_name: string;
   employee_id: string;
+  grade?: string | null;
+  profile_grade?: number | null;
   cycle_id?: string | null;
   status?: string | null;
   days_in_status?: number;

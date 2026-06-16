@@ -496,9 +496,8 @@ function DetailedReviewModal({
 
   const levelBadgeColor = (v: number | null) => {
     if (v == null) return "gray";
-    if (v <= 1) return "red";
-    if (v <= 2) return "orange";
-    if (v <= 3) return "yellow";
+    if (v < 2) return "red";
+    if (v < 3) return "yellow";
     return "green";
   };
 

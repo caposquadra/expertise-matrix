@@ -5,7 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { IconTable, IconSearch, IconStar } from "@tabler/icons-react";
 import client from "../api/client";
 import { translateGrade } from "../constants";
-import type { Cell, Employee, Skill } from "../types";
+import type { Cell, Employee, Score, Skill } from "../types";
 
 const levelText = (v: number | null) => (v != null ? String(v) : "—");
 
@@ -20,7 +20,7 @@ export function MatrixPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [cells, setCells] = useState<Cell[]>([]);
-  const [scores, setScores] = useState<Record<string, { current_score: number; target_score: number | null }>>({});
+  const [scores, setScores] = useState<Record<string, Score>>({});
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<string>("");
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -124,7 +124,7 @@ export function MatrixPage() {
                 </Table.Tr>
                 <Table.Tr>
                   <Table.Th style={{ position: "sticky", left: 0, background: "white", zIndex: 2, whiteSpace: "nowrap", borderRight: "1px solid var(--mantine-color-gray-2)" }}>
-                    <Text fw={600} size="xs">Итоговый балл</Text>
+                    <Text fw={600} size="xs">Итоговый балл по навыкам</Text>
                   </Table.Th>
                   {filteredEmployees.map((emp) => {
                     const s = scores[emp.id];
@@ -138,6 +138,19 @@ export function MatrixPage() {
                         ) : (
                           <Text size="xs" c="#bbb">—</Text>
                         )}
+                      </Table.Td>
+                    );
+                  })}
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Th style={{ position: "sticky", left: 0, background: "white", zIndex: 2, whiteSpace: "nowrap", borderRight: "1px solid var(--mantine-color-gray-2)" }}>
+                    <Text fw={600} size="xs">Грейд</Text>
+                  </Table.Th>
+                  {filteredEmployees.map((emp) => {
+                    const s = scores[emp.id];
+                    return (
+                      <Table.Td key={emp.id} ta="center" style={{ padding: "4px 8px" }}>
+                        {s?.profile_grade != null ? <Text size="xs" fw={700}>{s.profile_grade}</Text> : <Text size="xs" c="#bbb">—</Text>}
                       </Table.Td>
                     );
                   })}

@@ -113,7 +113,7 @@ export function EmployeePage() {
         </Group>
       )}
 
-      {user && <EmployeeProfileBlock employeeId={user.id} />}
+      {isManager && user && <EmployeeProfileBlock employeeId={user.id} />}
 
       <Card padding="sm" radius="md" mb="md" withBorder>
         <Group gap="lg">

@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
-import { Card, Text, Group, Badge, Button, Modal, TextInput, NumberInput, Textarea, Stack, SimpleGrid, Loader, Center } from "@mantine/core";
-import { IconBuilding, IconMapPin, IconBriefcase, IconUsers, IconNotebook } from "@tabler/icons-react";
+import { Card, Text, Group, Badge, Button, Modal, TextInput, NumberInput, Textarea, Stack, SimpleGrid, Loader, Center, Progress } from "@mantine/core";
 import client from "../api/client";
 import { useAuth } from "../store/auth";
 import type { EmployeeProfile } from "../types";
+
+const FIELDS: { key: keyof EmployeeProfile; label: string }[] = [
+  { key: "organization", label: "Организация" },
+  { key: "city", label: "Город" },
+  { key: "department", label: "Департамент" },
+  { key: "subdivision", label: "Подразделение" },
+  { key: "position", label: "Должность" },
+  { key: "specialization", label: "Специализация" },
+];
 
 const NUMERIC_LABELS: { key: keyof EmployeeProfile; label: string }[] = [
   { key: "experience", label: "Опыт" },
@@ -103,24 +111,17 @@ export function EmployeeProfileBlock({ employeeId }: Props) {
 
   if (loading) return <Center h={100}><Loader size="sm" /></Center>;
 
-  const renderNumeric = (key: keyof EmployeeProfile, label: string) => {
-    if (!profile) return null;
-    const val = profile[key] as number;
-    return (
-      <Group justify="space-between" mb={4}>
-        <Text size="sm">{label}</Text>
-        <Badge color={val >= 8 ? "green" : val >= 5 ? "yellow" : "red"} variant="light" size="lg">{val}/12</Badge>
-      </Group>
-    );
-  };
-
   return (
     <>
       <Card padding="lg" radius="lg" mb="xl" withBorder>
         <Group justify="space-between" mb="md">
-          <Group>
-            <IconBuilding size={20} />
+          <Group gap="xs">
             <Text fw={700}>Профиль сотрудника</Text>
+            {profile && (
+              <Badge size="lg" variant="filled" color="indigo" style={{ paddingLeft: 10, paddingRight: 10 }}>
+                Грейд {profile.grade}
+              </Badge>
+            )}
           </Group>
           {isManager && (
             <Button size="xs" variant="light" color="indigo" onClick={openEdit}>
@@ -138,54 +139,34 @@ export function EmployeeProfileBlock({ employeeId }: Props) {
 
         {profile && (
           <>
-            <SimpleGrid cols={{ base: 1, md: 2 }} mb="md">
-              <div>
-                <Group mb={4}>
-                  <IconBuilding size={14} />
-                  <Text size="sm" c="dimmed" w={120}>Организация</Text>
-                  <Text size="sm">{profile.organization}</Text>
-                </Group>
-                <Group mb={4}>
-                  <IconMapPin size={14} />
-                  <Text size="sm" c="dimmed" w={120}>Город</Text>
-                  <Text size="sm">{profile.city}</Text>
-                </Group>
-                <Group mb={4}>
-                  <IconUsers size={14} />
-                  <Text size="sm" c="dimmed" w={120}>Департамент</Text>
-                  <Text size="sm">{profile.department || "—"}</Text>
-                </Group>
-                <Group mb={4}>
-                  <IconUsers size={14} />
-                  <Text size="sm" c="dimmed" w={120}>Подразделение</Text>
-                  <Text size="sm">{profile.subdivision}</Text>
-                </Group>
-                <Group mb={4}>
-                  <IconBriefcase size={14} />
-                  <Text size="sm" c="dimmed" w={120}>Должность</Text>
-                  <Text size="sm">{profile.position || "—"}</Text>
-                </Group>
-                <Group mb={4}>
-                  <IconNotebook size={14} />
-                  <Text size="sm" c="dimmed" w={120}>Специализация</Text>
-                  <Text size="sm">{profile.specialization || "—"}</Text>
-                </Group>
-              </div>
-              <div>
-                <Card padding="sm" radius="md" withBorder mb="sm" style={{ background: "var(--mantine-color-indigo-0)" }}>
-                  <Text size="lg" fw={700} ta="center" c="indigo">{profile.grade}</Text>
-                  <Text size="xs" c="dimmed" ta="center">Грейд (среднее)</Text>
-                </Card>
-              </div>
-            </SimpleGrid>
+            {FIELDS.map(({ key, label }) => (
+              <Group key={key} mb={2}>
+                <Text size="sm" c="dimmed" w={140}>{label}</Text>
+                <Text size="sm">{String(profile[key] ?? "—")}</Text>
+              </Group>
+            ))}
 
-            <Text fw={600} size="sm" mb="xs">Оценки (1–12)</Text>
-            <SimpleGrid cols={{ base: 2, md: 3 }}>
-              {NUMERIC_LABELS.map(({ key, label }) => renderNumeric(key, label))}
+            <Text fw={600} size="sm" mt="md" mb="sm">Оценки (1–12)</Text>
+            <SimpleGrid cols={{ base: 1, md: 2 }}>
+              {NUMERIC_LABELS.map(({ key, label }) => {
+                const val = profile[key] as number;
+                return (
+                  <Group key={key} gap="xs" wrap="nowrap">
+                    <Text size="sm" w={140}>{label}</Text>
+                    <Progress.Root w="100%" size={20} style={{ flex: 1 }}>
+                      <Progress.Section value={(val / 12) * 100} color={val >= 8 ? "green" : val >= 5 ? "yellow" : "red"} />
+                    </Progress.Root>
+                    <Text size="sm" fw={600} w={40} ta="right">{val}/12</Text>
+                  </Group>
+                );
+              })}
             </SimpleGrid>
 
             {profile.notes && (
-              <Text size="sm" mt="sm"><Text span fw={600}>Особенности:</Text> {profile.notes}</Text>
+              <Text size="sm" mt="sm">
+                <Text span fw={600}>Особенности: </Text>
+                {profile.notes}
+              </Text>
             )}
           </>
         )}

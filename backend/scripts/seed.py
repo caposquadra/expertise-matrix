@@ -266,7 +266,7 @@ async def seed():
             profiles.append(
                 EmployeeProfile(
                     employee_id=emp.id,
-                    organization="ВРМ",
+                    organization="РЕД СОФТ",
                     city="Санкт-Петербург",
                     department="Департамент тестирования",
                     subdivision="Отдел тестирования ВРМ",

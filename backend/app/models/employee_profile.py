@@ -21,7 +21,7 @@ class EmployeeProfile(Base):
     employee_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("employees.id"), unique=True, nullable=False
     )
-    organization: Mapped[str] = mapped_column(String(255), default="ВРМ")
+    organization: Mapped[str] = mapped_column(String(255), default="РЕД СОФТ")
     city: Mapped[str] = mapped_column(String(255), default="Санкт-Петербург")
     department: Mapped[str] = mapped_column(String(255), default="")
     subdivision: Mapped[str] = mapped_column(

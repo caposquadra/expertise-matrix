@@ -27,7 +27,7 @@ def upgrade() -> None:
             unique=True,
             nullable=False,
         ),
-        sa.Column("organization", sa.String(255), nullable=False, server_default="ВРМ"),
+        sa.Column("organization", sa.String(255), nullable=False, server_default="РЕД СОФТ"),
         sa.Column(
             "city", sa.String(255), nullable=False, server_default="Санкт-Петербург"
         ),

@@ -63,7 +63,7 @@ export function EmployeeProfileBlock({ employeeId }: Props) {
   const openEdit = () => {
     if (!profile) {
       setForm({
-        organization: "ВРМ",
+        organization: "РЕД СОФТ",
         city: "Санкт-Петербург",
         department: "",
         subdivision: "Отдел тестирования ВРМ",

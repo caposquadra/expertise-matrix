@@ -1,6 +1,12 @@
 """Unit tests for API constants."""
 
-from app.api.v1.constants import ACTIVE_REVIEW_STATUSES, GRADE_TARGETS, NEXT_GRADE, PROMOTION_THRESHOLD, REVIEW_STATUSES
+from app.api.v1.constants import (
+    ACTIVE_REVIEW_STATUSES,
+    GRADE_TARGETS,
+    NEXT_GRADE,
+    PROMOTION_THRESHOLD,
+    REVIEW_STATUSES,
+)
 
 
 class TestGradeTargets:

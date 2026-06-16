@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -10,6 +10,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.assessment import Assessment
+    from app.models.employee_profile import EmployeeProfile
     from app.models.ipr import IprPlan
     from app.models.review import ReviewCycle
 
@@ -69,4 +70,7 @@ class Employee(Base):
         "ReviewCycle",
         back_populates="employee",
         foreign_keys="[ReviewCycle.employee_id]",
+    )
+    profile: Mapped[Optional["EmployeeProfile"]] = relationship(
+        "EmployeeProfile", back_populates="employee", uselist=False
     )

@@ -51,11 +51,11 @@ Received: false
   1  | import { test, expect } from "@playwright/test";
   2  | import { LoginPage } from "./pages/LoginPage";
   3  | import { DashboardPage } from "./pages/DashboardPage";
-  4  | 
+  4  |
   5  | const ADMIN = { email: "admin@example.com", password: "admin123" };
   6  | const MANAGER = { email: "manager@example.com", password: "manager123" };
   7  | const EMPLOYEE = { email: "ivan@example.com", password: "ivan123" };
-  8  | 
+  8  |
   9  | test.describe("Authentication", () => {
   10 |   test("login as admin and see dashboard", async ({ page }) => {
   11 |     const login = new LoginPage(page);
@@ -63,14 +63,14 @@ Received: false
   13 |     await login.loginAndExpect(ADMIN.email, ADMIN.password, /\//);
   14 |     await expect(page).toHaveURL(/\/$/);
   15 |   });
-  16 | 
+  16 |
   17 |   test("login as employee and redirect to profile", async ({ page }) => {
   18 |     const login = new LoginPage(page);
   19 |     await login.goto();
   20 |     await login.loginAndExpect(EMPLOYEE.email, EMPLOYEE.password, /\/profile/);
   21 |     await expect(page).toHaveURL(/\/profile/);
   22 |   });
-  23 | 
+  23 |
   24 |   test("login with wrong password shows error", async ({ page }) => {
   25 |     const login = new LoginPage(page);
   26 |     await login.goto();
@@ -80,34 +80,34 @@ Received: false
   30 |     await expect(page.getByText("Invalid email or password")).toBeVisible();
   31 |   });
   32 | });
-  33 | 
+  33 |
   34 | test.describe("Dashboard", () => {
   35 |   test.beforeEach(async ({ page }) => {
   36 |     const login = new LoginPage(page);
   37 |     await login.goto();
   38 |     await login.loginAndExpect(MANAGER.email, MANAGER.password, /\//);
   39 |   });
-  40 | 
+  40 |
   41 |   test("shows employee count", async ({ page }) => {
   42 |     const dash = new DashboardPage(page);
   43 |     await expect(dash.totalEmployees()).toBeVisible();
   44 |   });
-  45 | 
+  45 |
   46 |   test("shows skill coverage", async ({ page }) => {
   47 |     const dash = new DashboardPage(page);
   48 |     await expect(dash.skillCoverageTable()).toBeVisible();
   49 |   });
-  50 | 
+  50 |
   51 |   test("shows weakest skills section", async ({ page }) => {
   52 |     const dash = new DashboardPage(page);
 > 53 |     await expect(dash.hasWeakestSkills()).resolves.toBe(true);
      |                                                    ^ Error: expect(received).resolves.toBe(expected) // Object.is equality
   54 |   });
-  55 | 
+  55 |
   56 |   test("shows promotion ready section", async ({ page }) => {
   57 |     const dash = new DashboardPage(page);
   58 |     await expect(dash.hasPromotionReady()).resolves.toBe(true);
   59 |   });
   60 | });
-  61 | 
+  61 |
 ```

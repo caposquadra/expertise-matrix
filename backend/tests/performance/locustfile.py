@@ -8,10 +8,13 @@ class ManagerUser(HttpUser):
     token: str | None = None
 
     def on_start(self):
-        r = self.client.post("/api/v1/auth/login", json={
-            "email": "manager@example.com",
-            "password": "manager123",
-        })
+        r = self.client.post(
+            "/api/v1/auth/login",
+            json={
+                "email": "manager@example.com",
+                "password": "manager123",
+            },
+        )
         self.token = r.json()["access_token"]
         self.headers = {"Authorization": f"Bearer {self.token}"}
 
@@ -49,4 +52,6 @@ class ManagerUser(HttpUser):
 
     @task(1)
     def recent_decisions(self):
-        self.client.get("/api/v1/reports/recent-decisions?limit=5", headers=self.headers)
+        self.client.get(
+            "/api/v1/reports/recent-decisions?limit=5", headers=self.headers
+        )

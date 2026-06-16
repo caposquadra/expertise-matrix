@@ -5,7 +5,9 @@ from httpx import AsyncClient
 
 class TestListSkills:
     async def test_anyone_can_list(self, client: AsyncClient, employee_token, skill):
-        r = await client.get("/api/v1/skills", headers={"Authorization": f"Bearer {employee_token}"})
+        r = await client.get(
+            "/api/v1/skills", headers={"Authorization": f"Bearer {employee_token}"}
+        )
         assert r.status_code == 200
         names = [s["name"] for s in r.json()]
         assert skill.name in names
@@ -40,7 +42,9 @@ class TestUpdateSkill:
         assert r.status_code == 200
         assert r.json()["name"] == "Linux Advanced"
 
-    async def test_manager_cannot_update(self, client: AsyncClient, manager_token, skill):
+    async def test_manager_cannot_update(
+        self, client: AsyncClient, manager_token, skill
+    ):
         r = await client.patch(
             f"/api/v1/skills/{skill.id}",
             json={"name": "Hacked"},
@@ -51,9 +55,17 @@ class TestUpdateSkill:
 
 class TestDeleteSkill:
     async def test_admin_can_deactivate(self, client: AsyncClient, admin_token, skill):
-        r = await client.delete(f"/api/v1/skills/{skill.id}", headers={"Authorization": f"Bearer {admin_token}"})
+        r = await client.delete(
+            f"/api/v1/skills/{skill.id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
         assert r.status_code == 204
 
-    async def test_employee_cannot_delete(self, client: AsyncClient, employee_token, skill):
-        r = await client.delete(f"/api/v1/skills/{skill.id}", headers={"Authorization": f"Bearer {employee_token}"})
+    async def test_employee_cannot_delete(
+        self, client: AsyncClient, employee_token, skill
+    ):
+        r = await client.delete(
+            f"/api/v1/skills/{skill.id}",
+            headers={"Authorization": f"Bearer {employee_token}"},
+        )
         assert r.status_code == 403

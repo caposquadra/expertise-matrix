@@ -197,3 +197,25 @@ export interface LevelInfo {
   title: string;
   what: string;
 }
+
+export interface EmployeeProfile {
+  id: string;
+  employee_id: string;
+  organization: string;
+  city: string;
+  department: string;
+  subdivision: string;
+  position: string;
+  specialization: string;
+  experience: number;
+  education: number;
+  task_complexity: number;
+  autonomy: number;
+  communication: number;
+  control: number;
+  mentoring: number;
+  responsibility: number;
+  technical_competencies: number;
+  notes: string | null;
+  grade: number;
+}

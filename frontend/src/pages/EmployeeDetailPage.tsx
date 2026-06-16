@@ -4,8 +4,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, Text, Group, Badge, Table, Loader, Center, Button, Avatar, Progress } from "@mantine/core";
 import { IconArrowLeft, IconStar } from "@tabler/icons-react";
 import client from "../api/client";
+import { useAuth } from "../store/auth";
 import { translateRole, translateGrade } from "../constants";
 
+import { EmployeeProfileBlock } from "../components/EmployeeProfileBlock";
 import type { Skill, Assessment, Employee, Score } from "../types";
 
 const gradeLevel: Record<string, number> = { junior: 2, middle: 3, senior: 4 };
@@ -28,6 +30,8 @@ const catBgColors = ["#f0f4f8", "#f0f0f8", "#f4f8f0", "#f8f4f0", "#f0f8f8", "#f8
 
 export function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const isManager = user?.role === "admin" || user?.role === "manager";
   const navigate = useNavigate();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -73,6 +77,8 @@ export function EmployeeDetailPage() {
           </div>
         </Group>
       </Card>
+
+      {isManager && id && <EmployeeProfileBlock employeeId={id} />}
 
       {score && (
         <Group mb="md" gap="md">

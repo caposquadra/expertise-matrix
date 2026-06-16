@@ -5,6 +5,7 @@ import client from "../api/client";
 import { useAuth } from "../store/auth";
 import { translateRole, translateGrade } from "../constants";
 
+import { EmployeeProfileBlock } from "../components/EmployeeProfileBlock";
 import type { Skill, Assessment, HistoryEntry, Score } from "../types";
 
 const fieldLabels: Record<string, string> = {
@@ -111,6 +112,8 @@ export function EmployeePage() {
           </Card>
         </Group>
       )}
+
+      {isManager && user && <EmployeeProfileBlock employeeId={user.id} />}
 
       <Card padding="sm" radius="md" mb="md" withBorder>
         <Group gap="lg">

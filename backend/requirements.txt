@@ -19,3 +19,4 @@ mypy>=1.14.0
 locust>=2.32
 schemathesis>=3.35
 openpyxl==3.1.5
+pre-commit>=4.0,<5

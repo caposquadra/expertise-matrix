@@ -91,7 +91,15 @@ SKILLS_DATA = [
 async def seed():
     async with async_session_factory() as session:
         # Clean existing data
-        for table in [ReviewAssessment, ReviewCycle, Assessment, Employee, Skill, Team]:
+        for table in [
+            ReviewAssessment,
+            ReviewCycle,
+            Assessment,
+            EmployeeProfile,
+            Employee,
+            Skill,
+            Team,
+        ]:
             await session.execute(table.__table__.delete())
 
         team_qa = Team(name="QA Engineering", description="Команда тестирования")

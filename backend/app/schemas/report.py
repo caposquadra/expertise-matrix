@@ -71,7 +71,7 @@ class EmployeeCycleInfo(BaseModel):
     employee_name: str
     employee_id: str
     grade: str | None = None
-    profile_grade: int | None = None
+    profile_grade: float | None = None
     cycle_id: str | None = None
     status: str | None = None
     days_in_status: int = 0

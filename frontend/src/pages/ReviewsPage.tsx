@@ -52,6 +52,7 @@ interface ReviewAssessment {
   self_comment: string | null;
   manager_level: number | null;
   expert_level: number | null;
+  target_level: number | null;
 }
 
 interface ReviewCycle {
@@ -485,7 +486,6 @@ function DetailedReviewModal({
     { value: "1", label: "1 — Начальный" },
     { value: "2", label: "2 — Базовый" },
     { value: "3", label: "3 — Средний" },
-    { value: "4", label: "4 — Продвинутый" },
   ];
 
   const categories = [...new Set(cycle.assessments.map((a) => skillsById[a.skill_id]?.category).filter(Boolean))];
@@ -500,6 +500,9 @@ function DetailedReviewModal({
     if (v < 3) return "yellow";
     return "green";
   };
+
+  const gradeLevelMap: Record<string, number> = { junior: 1, middle: 2, senior: 3 };
+  const targetLevelFallback = cycle.target_grade ? gradeLevelMap[cycle.target_grade] : null;
 
   const catBgColors = ["#f0f4f8", "#f0f0f8", "#f4f8f0", "#f8f4f0", "#f0f8f8", "#f8f0f4", "#f4f4f0", "#f0f4f4"];
 
@@ -522,6 +525,7 @@ function DetailedReviewModal({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Навык</Table.Th>
+                <Table.Th ta="center" w={80}>Цель</Table.Th>
                 <Table.Th ta="center" w={140}>Самооценка</Table.Th>
                 <Table.Th ta="center" w={140}>Оценка рук-ля</Table.Th>
                 <Table.Th ta="center" w={140}>Оценка эксперта</Table.Th>
@@ -532,7 +536,7 @@ function DetailedReviewModal({
                 <>
                   <Table.Tr key={`cat-${cat}`}>
                     <Table.Td
-                      colSpan={4}
+                      colSpan={5}
                       style={{
                         background: catBgColors[ci % catBgColors.length],
                         fontWeight: 700,
@@ -554,13 +558,18 @@ function DetailedReviewModal({
                         ? assessment.self_level != null
                         : assessment.self_comment != null;
                       return (
-                        <Fragment key={assessment.id}>
-                          <Table.Tr>
-                            <Table.Td style={{ verticalAlign: "middle" }}>
-                              <Text fw={500} size="sm">{skill.name}</Text>
-                            </Table.Td>
-                            <Table.Td ta="center" style={{ verticalAlign: "middle" }}>
-                              {editSelf ? (
+                          <Fragment key={assessment.id}>
+                            <Table.Tr>
+                              <Table.Td style={{ verticalAlign: "middle" }}>
+                                <Text fw={500} size="sm">{skill.name}</Text>
+                              </Table.Td>
+                              <Table.Td ta="center" style={{ verticalAlign: "middle" }}>
+                                <Badge color={levelBadgeColor(assessment.target_level)} variant="light" size="lg">
+                                  {assessment.target_level ?? targetLevelFallback ?? "—"}
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td ta="center" style={{ verticalAlign: "middle" }}>
+                                {editSelf ? (
                                 <Select
                                   size="xs"
                                   w={130}
@@ -623,7 +632,7 @@ function DetailedReviewModal({
                           </Table.Tr>
                           {showComment && (
                             <Table.Tr>
-                              <Table.Td colSpan={2} style={{ padding: "4px 16px 8px" }}>
+                              <Table.Td colSpan={3} style={{ padding: "4px 16px 8px" }}>
                                 {editSelf ? (
                                   <Textarea
                                     size="xs"

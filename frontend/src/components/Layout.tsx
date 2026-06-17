@@ -55,7 +55,7 @@ export function Layout() {
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
             <IconLayoutGrid size={24} color={theme.colors.indigo[6]} />
             <Text fw={800} size="lg" c={theme.colors.indigo[7]}>
-              Expertise Matrix
+              Матрица компетенций департамента тестирования
             </Text>
           </Group>
 

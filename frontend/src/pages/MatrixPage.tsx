@@ -70,7 +70,7 @@ export function MatrixPage() {
     <>
       <Group mb="lg">
         <ThemeIcon size="lg" radius="md" color="indigo" variant="light"><IconTable size={20} /></ThemeIcon>
-        <Title order={2} fw={700}>Матрица компетенций</Title>
+        <Title order={2} fw={700}>Матрица компетенций департамента тестирования</Title>
       </Group>
 
       <Group mb="md">
@@ -205,7 +205,7 @@ export function MatrixPage() {
       )}
 
       <Group mt="md" gap="xs">
-        <Text size="xs" c="dimmed">уровни: 1 · 2 · 3 · 4</Text>
+        <Text size="xs" c="dimmed">уровни: 1 · 2 · 3</Text>
         <Text size="xs" c="dimmed" ml="md">имя → страница сотрудника · название → описание навыка</Text>
       </Group>
     </>

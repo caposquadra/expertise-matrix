@@ -4,6 +4,13 @@ import sys
 from pathlib import Path
 from typing import AsyncGenerator
 
+# Set required env vars before any app imports
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test",
+)
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only")
+
 # Ensure backend/ is on sys.path for CI and local development
 _backend_root = str(Path(__file__).resolve().parent.parent)
 if _backend_root not in sys.path:

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -47,11 +47,22 @@ async def _get_cycle(db: AsyncSession, cycle_id: str) -> ReviewCycle:
     return cycle
 
 
+def _attach_target_levels(
+    cycles_out: list[ReviewCycleOut],
+    target_map: dict[tuple[str, str], int | None],
+) -> None:
+    for c in cycles_out:
+        for a in c.assessments:
+            a.target_level = target_map.get((str(c.employee_id), str(a.skill_id)))
+
+
 # ── Employee endpoints ─────────────────────────────────────────────
 
 
 @router.get("", response_model=list[ReviewCycleOut])
 async def list_review_cycles(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: Employee = Depends(get_current_user),
 ):
@@ -63,9 +74,25 @@ async def list_review_cycles(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
-    query = query.order_by(ReviewCycle.created_at.desc())
+    query = query.order_by(ReviewCycle.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(query)
-    return [ReviewCycleOut.model_validate(c) for c in result.scalars().all()]
+    cycles = result.scalars().all()
+    if not cycles or current_user.role == "employee":
+        return [ReviewCycleOut.model_validate(c) for c in cycles]
+
+    employee_ids = list({str(c.employee_id) for c in cycles if c.employee_id})
+    target_rows = await db.execute(
+        select(
+            Assessment.skill_id, Assessment.employee_id, Assessment.target_level
+        ).where(Assessment.employee_id.in_(employee_ids))
+    )
+    target_map: dict[tuple[str, str], int | None] = {}
+    for row in target_rows.all():
+        target_map[(str(row.employee_id), str(row.skill_id))] = row.target_level
+
+    out = [ReviewCycleOut.model_validate(c) for c in cycles]
+    _attach_target_levels(out, target_map)
+    return out
 
 
 @router.post("", response_model=ReviewCycleOut, status_code=status.HTTP_201_CREATED)
@@ -135,7 +162,18 @@ async def get_review_cycle(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
-    return ReviewCycleOut.model_validate(cycle)
+    out = ReviewCycleOut.model_validate(cycle)
+    if out.employee_id:
+        target_rows = await db.execute(
+            select(
+                Assessment.skill_id, Assessment.employee_id, Assessment.target_level
+            ).where(Assessment.employee_id == cycle.employee_id)
+        )
+        target_map: dict[tuple[str, str], int | None] = {}
+        for row in target_rows.all():
+            target_map[(str(row.employee_id), str(row.skill_id))] = row.target_level
+        _attach_target_levels([out], target_map)
+    return out
 
 
 @router.put("/{cycle_id}/assessments/{skill_id}", response_model=ReviewAssessmentOut)

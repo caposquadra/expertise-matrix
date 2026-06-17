@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +25,8 @@ router = APIRouter(prefix="/ipr-plans", tags=["ipr"])
 @router.get("", response_model=list[IprPlanOut])
 async def list_ipr_plans(
     employee_id: str | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: Employee = Depends(get_current_user),
 ):
@@ -47,7 +49,7 @@ async def list_ipr_plans(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    query = query.order_by(IprPlan.created_at.desc())
+    query = query.order_by(IprPlan.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(query)
     return [IprPlanOut.model_validate(p) for p in result.scalars().all()]
 

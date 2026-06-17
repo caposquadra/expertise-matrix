@@ -1,10 +1,13 @@
 import logging
+import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_admin_user, get_current_user
+from app.api.v1.constants import GRADE_TARGETS
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import (
     create_access_token,
@@ -13,10 +16,9 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.models import Employee
+from app.models import Assessment, Employee, Skill
 from app.schemas import (
     LoginRequest,
-    RefreshRequest,
     RegisterRequest,
     TokenResponse,
     UserOut,
@@ -24,11 +26,56 @@ from app.schemas import (
 
 logger = logging.getLogger(__name__)
 
+REFRESH_COOKIE_KEY = "refresh_token"
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE_KEY,
+        value=token,
+        httponly=True,
+        secure=False,  # set True in production with HTTPS
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 86400,
+        path="/api/v1/auth",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=REFRESH_COOKIE_KEY,
+        path="/api/v1/auth",
+        httponly=True,
+        samesite="lax",
+    )
+
+
+async def _fill_default_assessments(
+    db: AsyncSession, employee_id: uuid.UUID, grade: str
+) -> None:
+    default_level = GRADE_TARGETS.get(grade.lower())
+    if default_level is None:
+        return
+    result = await db.execute(select(Skill).where(Skill.is_active))
+    skills = result.scalars().all()
+    for skill in skills:
+        assessment = Assessment(
+            employee_id=employee_id,
+            skill_id=skill.id,
+            self_level=default_level,
+        )
+        db.add(assessment)
+    await db.commit()
+
+
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(
+    body: LoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
     """Authenticate user and return JWT tokens."""
     result = await db.execute(select(Employee).where(Employee.email == body.email))
     user = result.scalar_one_or_none()
@@ -44,19 +91,32 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         )
 
     token_data = {"sub": str(user.id)}
+    refresh_token = create_refresh_token(token_data, user.token_version)
+    _set_refresh_cookie(response, refresh_token)
     logger.info("User %s logged in", user.email)
     return TokenResponse(
         access_token=create_access_token(token_data, user.token_version),
-        refresh_token=create_refresh_token(token_data, user.token_version),
         user=UserOut.model_validate(user),
     )
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    """Refresh an expired access token using a refresh token."""
-    payload = decode_token(body.refresh_token)
+async def refresh(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Refresh an expired access token using refresh_token cookie."""
+    raw_token = request.cookies.get(REFRESH_COOKIE_KEY)
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token cookie missing",
+        )
+
+    payload = decode_token(raw_token)
     if payload is None or payload.get("type") != "refresh":
+        _clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
@@ -66,21 +126,24 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
 
     if user is None or not user.is_active:
+        _clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
         )
 
     if payload.get("ver", 0) != user.token_version:
+        _clear_refresh_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
         )
 
     token_data = {"sub": str(user.id)}
+    new_refresh = create_refresh_token(token_data, user.token_version)
+    _set_refresh_cookie(response, new_refresh)
     return TokenResponse(
         access_token=create_access_token(token_data, user.token_version),
-        refresh_token=create_refresh_token(token_data, user.token_version),
         user=UserOut.model_validate(user),
     )
 
@@ -108,18 +171,22 @@ async def register(
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    if user.grade:
+        await _fill_default_assessments(db, user.id, user.grade)
     logger.info("Admin %s registered user %s", admin.email, user.email)
     return UserOut.model_validate(user)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: Employee = Depends(get_current_user),
 ):
     """Revoke all tokens for the current user by bumping token_version."""
     current_user.token_version += 1
     await db.commit()
+    _clear_refresh_cookie(response)
     logger.info(
         "User %s logged out (token_version=%d)",
         current_user.email,

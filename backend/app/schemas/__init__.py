@@ -1,6 +1,5 @@
 from app.schemas.auth import (
     LoginRequest,
-    RefreshRequest,
     RegisterRequest,
     TokenResponse,
     UserOut,
@@ -15,5 +14,4 @@ __all__ = [
     "SkillOut",
     "SkillCreate",
     "SkillUpdate",
-    "RefreshRequest",
 ]

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Paper, TextInput, PasswordInput, Button, Alert, Text, Center, Stack, Divider, Group } from "@mantine/core";
 import { IconAlertCircle, IconLayoutGrid, IconUsers, IconChartBar, IconStar } from "@tabler/icons-react";
-import client from "../api/client";
+import client, { setAccessToken } from "../api/client";
 import { useAuth } from "../store/auth";
 
 export function LoginPage() {
@@ -19,8 +19,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       const { data } = await client.post("/auth/login", { email, password });
-      localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("refresh_token", data.refresh_token);
+      setAccessToken(data.access_token);
       setUser(data.user);
       if (data.user.role === "employee") {
         navigate("/profile");
@@ -41,13 +40,11 @@ export function LoginPage() {
     <div style={{ minHeight: "100vh", display: "flex", background: "linear-gradient(135deg, #eef1f6 0%, #e2e8f0 100%)" }}>
       <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 8 }}>
         <Container size={420}>
-          <Center mb={0}>
+          <Center mb="lg">
             <IconLayoutGrid size={40} color="var(--mantine-color-indigo-7)" />
-            <Text ml="sm" fw={800} style={{ fontSize: 28, lineHeight: 1.1 }} c="var(--mantine-color-indigo-7)">Expertise Matrix</Text>
+            <Text ml="sm" fw={800} style={{ fontSize: 28, lineHeight: 1.1 }} c="var(--mantine-color-indigo-7)">Матрица компетенций</Text>
           </Center>
-          <Text ta="center" c="dimmed" size="sm" mb={8}>
-            Внутренний портал управления компетенциями команды тестирования
-          </Text>
+
           <Paper shadow="lg" p="md" radius="lg" style={{ background: "rgba(255,255,255,0.95)" }}>
             <form onSubmit={handleSubmit}>
               <TextInput label="Email" placeholder="email@domain.com" value={email} onChange={(e) => setEmail(e.target.value)} required mb="sm" size="md" />

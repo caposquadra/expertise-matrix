@@ -5,10 +5,10 @@ from pydantic import BaseModel, Field
 
 
 class ReviewAssessmentUpdate(BaseModel):
-    self_level: int | None = Field(None, ge=1, le=4)
+    self_level: int | None = Field(None, ge=1, le=3)
     self_comment: str | None = None
-    manager_level: int | None = Field(None, ge=1, le=4)
-    expert_level: int | None = Field(None, ge=1, le=4)
+    manager_level: int | None = Field(None, ge=1, le=3)
+    expert_level: int | None = Field(None, ge=1, le=3)
 
 
 class ReviewAssessmentOut(BaseModel):
@@ -19,6 +19,7 @@ class ReviewAssessmentOut(BaseModel):
     self_comment: str | None = None
     manager_level: int | None = None
     expert_level: int | None = None
+    target_level: int | None = None
 
     model_config = {"from_attributes": True}
 

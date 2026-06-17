@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Title, Card, Text, Group, Badge, Table, Loader, Center, Tabs, Avatar, Button, Box } from "@mantine/core";
-import { IconStar, IconHistory } from "@tabler/icons-react";
+import { IconStar, IconHistory, IconPencil } from "@tabler/icons-react";
 import client from "../api/client";
 import { useAuth } from "../store/auth";
 import { translateRole, translateGrade } from "../constants";
 
 import { EmployeeProfileBlock } from "../components/EmployeeProfileBlock";
+import { SkillLevelEditor } from "../components/SkillLevelEditor";
 import type { Skill, Assessment, HistoryEntry } from "../types";
 
 const fieldLabels: Record<string, string> = {
@@ -36,6 +37,7 @@ export function EmployeePage() {
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<Record<string, HistoryEntry[]>>({});
   const [historyLoading, setHistoryLoading] = useState<string | null>(null);
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -49,6 +51,18 @@ export function EmployeePage() {
 
   const getAssess = (skillId: string) => assessments.find((a) => a.skill_id === skillId);
   const currentLevel = (a: Assessment | undefined) => a?.manager_level ?? a?.self_level ?? null;
+
+  const handleAssessmentSave = (updated: Assessment) => {
+    setAssessments((prev) => {
+      const idx = prev.findIndex((a) => a.skill_id === updated.skill_id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = updated;
+        return next;
+      }
+      return [...prev, updated];
+    });
+  };
 
   const loadHistory = async (assessmentId: string) => {
     if (history[assessmentId]) return;
@@ -98,6 +112,7 @@ export function EmployeePage() {
         </Tabs.List>
 
         <Tabs.Panel value="skills">
+          <Text size="xs" c="dimmed" mb="sm">{isManager ? 'Нажмите на уровень в столбце Текущий ✎, чтобы изменить его' : 'Ваши уровни навыков. Изменения возможны только в рамках цикла оценки.'}</Text>
           {categories.map((cat) => (
             <Card key={cat} padding="lg" radius="lg" mb="md">
               <Title order={5} mb="sm" c="indigo">{cat}</Title>
@@ -106,7 +121,13 @@ export function EmployeePage() {
                   <Table.Tr>
                     <Table.Th>Навык</Table.Th>
                     <Table.Th w={160} />
-                    <Table.Th w={70} ta="center">Текущий</Table.Th>
+                    <Table.Th w={70} ta="center">
+                      {isManager ? (
+                        <Group gap={2} justify="center" wrap="nowrap">
+                          Текущий <IconPencil size={11} style={{ opacity: 0.35 }} />
+                        </Group>
+                      ) : "Текущий"}
+                    </Table.Th>
                     <Table.Th w={60} ta="center">Цель</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -116,7 +137,11 @@ export function EmployeePage() {
                     const cl = currentLevel(a);
                     const col = currentBadgeColor(cl, a?.target_level ?? null);
                     return (
-                      <Table.Tr key={s.id}>
+                      <Table.Tr
+                        key={s.id}
+                        onMouseEnter={() => setHoveredRow(s.id)}
+                        onMouseLeave={() => setHoveredRow(null)}
+                      >
                         <Table.Td fw={500}>
                           <Group gap={4} wrap="nowrap">
                             {s.weight >= 3 && <IconStar size={12} style={{ color: "var(--mantine-color-yellow-6)", flexShrink: 0 }} />}
@@ -138,8 +163,18 @@ export function EmployeePage() {
                             })}
                           </Group>
                         </Table.Td>
-                        <Table.Td ta="center">{cl ?? "—"}</Table.Td>
-                        <Table.Td ta="center">{a?.target_level ?? nextGradeTarget}</Table.Td>
+                        <Table.Td ta="center" style={{ borderRadius: 4, background: isManager && hoveredRow === s.id ? "var(--mantine-color-indigo-0)" : undefined, transition: "background 100ms" }}>
+                          {isManager ? (
+                            <SkillLevelEditor skillId={s.id} currentValue={cl} mode="self" onSave={handleAssessmentSave} />
+                          ) : (
+                            <Badge color="gray" variant="outline" size="lg">{cl ?? "—"}</Badge>
+                          )}
+                        </Table.Td>
+                        <Table.Td ta="center">
+                          <Badge color="gray" variant="outline" size="lg">
+                            {a?.target_level ?? nextGradeTarget}
+                          </Badge>
+                        </Table.Td>
                       </Table.Tr>
                     );
                   })}

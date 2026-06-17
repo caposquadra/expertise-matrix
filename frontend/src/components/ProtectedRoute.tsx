@@ -1,24 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { Loader, Center } from "@mantine/core";
 import { useAuth } from "../store/auth";
-import client from "../api/client";
+import client, { getAccessToken } from "../api/client";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, setUser } = useAuth();
   const location = useLocation();
-  const token = localStorage.getItem("access_token");
+  const [checking, setChecking] = useState(!getAccessToken() && !user);
 
   useEffect(() => {
-    if (token && !user) {
+    if (getAccessToken() && !user) {
       client.get("/auth/me").then(({ data }) => setUser(data)).catch(() => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
+        // refresh will be attempted by interceptor; if that fails, redirect
       });
+      return;
     }
-  }, [token, user, setUser]);
+    if (!getAccessToken() && !user) {
+      // try to restore session via refresh cookie
+      client.get("/auth/me").then(({ data }) => setUser(data)).catch(() => {
+        // no cookie or refresh failed — redirect to login
+      }).finally(() => setChecking(false));
+    }
+  }, [user, setUser]);
 
-  if (!token) {
+  if (!getAccessToken() && !user && !checking) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

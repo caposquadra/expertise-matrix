@@ -5,17 +5,17 @@ from pydantic import BaseModel, Field
 
 
 class AssessmentUpdate(BaseModel):
-    self_level: int | None = Field(None, ge=1, le=4)
-    manager_level: int | None = Field(None, ge=1, le=4)
-    target_level: int | None = Field(None, ge=1, le=4)
+    self_level: int | None = Field(None, ge=1, le=3)
+    manager_level: int | None = Field(None, ge=1, le=3)
+    target_level: int | None = Field(None, ge=1, le=3)
 
 
 class TargetUpdate(BaseModel):
-    target_level: int = Field(..., ge=1, le=4)
+    target_level: int = Field(..., ge=1, le=3)
 
 
 class BulkTargetUpdate(BaseModel):
-    target_level: int = Field(..., ge=1, le=4)
+    target_level: int = Field(..., ge=1, le=3)
 
 
 class AssessmentOut(BaseModel):

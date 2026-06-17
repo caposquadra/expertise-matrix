@@ -14,7 +14,6 @@ const mockUser = {
 describe("useAuth store", () => {
   beforeEach(() => {
     useAuth.setState({ user: null });
-    localStorage.clear();
   });
 
   it("starts with null user", () => {
@@ -28,16 +27,12 @@ describe("useAuth store", () => {
     expect(user).toEqual(mockUser);
   });
 
-  it("logout clears user and tokens", async () => {
-    localStorage.setItem("access_token", "abc");
-    localStorage.setItem("refresh_token", "xyz");
+  it("logout clears user", async () => {
     useAuth.getState().setUser(mockUser);
 
     await useAuth.getState().logout();
 
     const { user } = useAuth.getState();
     expect(user).toBeNull();
-    expect(localStorage.getItem("access_token")).toBeNull();
-    expect(localStorage.getItem("refresh_token")).toBeNull();
   });
 });

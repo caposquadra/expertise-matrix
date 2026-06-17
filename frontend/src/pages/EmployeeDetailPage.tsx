@@ -8,6 +8,7 @@ import { useAuth } from "../store/auth";
 import { translateRole, translateGrade } from "../constants";
 
 import { EmployeeProfileBlock } from "../components/EmployeeProfileBlock";
+import { SkillLevelEditor } from "../components/SkillLevelEditor";
 import type { Skill, Assessment, Employee } from "../types";
 
 const gradeLevel: Record<string, number> = { junior: 1, middle: 2, senior: 3 };
@@ -48,6 +49,18 @@ export function EmployeeDetailPage() {
   }, [id]);
 
   const getAssess = (skillId: string) => assessments.find((a) => a.skill_id === skillId);
+
+  const handleAssessmentSave = (updated: Assessment) => {
+    setAssessments((prev) => {
+      const idx = prev.findIndex((a) => a.skill_id === updated.skill_id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = updated;
+        return next;
+      }
+      return [...prev, updated];
+    });
+  };
 
   if (loading) return <Center h={300}><Loader /></Center>;
   if (!employee) return <Center h={300}><Text c="dimmed">Сотрудник не найден</Text></Center>;
@@ -128,7 +141,9 @@ export function EmployeeDetailPage() {
                             })}
                           </Group>
                         </Table.Td>
-                        <Table.Td ta="center">{effective ?? "—"}</Table.Td>
+                        <Table.Td ta="center">
+                          <SkillLevelEditor skillId={s.id} employeeId={id} currentValue={effective} mode="manager" onSave={handleAssessmentSave} />
+                        </Table.Td>
                         <Table.Td ta="center">{a?.target_level ?? nextGradeTarget}</Table.Td>
                       </Table.Tr>
                     );

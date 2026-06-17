@@ -1,4 +1,4 @@
-# Expertise Matrix
+# Матрица компетенций департамента тестирования
 
 Internal web portal for managing a testing team's competency matrix.
 

@@ -6,11 +6,11 @@ from httpx import AsyncClient
 
 @pytest.fixture
 def assessment_payload():
-    return {"self_level": 3, "manager_level": 4, "target_level": 4}
+    return {"self_level": 3, "manager_level": 3, "target_level": 3}
 
 
 class TestSelfAssessment:
-    async def test_employee_set_self_level(
+    async def test_employee_cannot_set_self_level(
         self, client: AsyncClient, employee_token, employee_user, skill
     ):
         r = await client.put(
@@ -18,12 +18,9 @@ class TestSelfAssessment:
             json={"self_level": 3},
             headers={"Authorization": f"Bearer {employee_token}"},
         )
-        assert r.status_code == 200
-        data = r.json()
-        assert data["self_level"] == 3
-        assert data["skill_id"] == str(skill.id)
+        assert r.status_code == 403
 
-    async def test_employee_set_self_to_null(
+    async def test_employee_cannot_set_self_to_null(
         self, client: AsyncClient, employee_token, employee_user, skill
     ):
         r = await client.put(
@@ -31,8 +28,7 @@ class TestSelfAssessment:
             json={"self_level": None},
             headers={"Authorization": f"Bearer {employee_token}"},
         )
-        assert r.status_code == 200
-        assert r.json()["self_level"] is None
+        assert r.status_code == 403
 
     async def test_employee_cannot_set_manager_level(
         self, client: AsyncClient, employee_token, employee_user, skill
@@ -90,12 +86,12 @@ class TestManagerAssessment:
 
 class TestGetAssessments:
     async def test_get_own_assessments(
-        self, client: AsyncClient, employee_token, employee_user, skill
+        self, client: AsyncClient, employee_token, manager_token, employee_user, skill
     ):
         await client.put(
-            f"/api/v1/assessments/{skill.id}",
+            f"/api/v1/assessments/{skill.id}?employee_id={employee_user.id}",
             json={"self_level": 3},
-            headers={"Authorization": f"Bearer {employee_token}"},
+            headers={"Authorization": f"Bearer {manager_token}"},
         )
         r = await client.get(
             f"/api/v1/assessments?employee_id={employee_user.id}",
@@ -116,23 +112,23 @@ class TestGetAssessments:
 
 class TestAssessmentHistory:
     async def test_get_history(
-        self, client: AsyncClient, employee_token, employee_user, skill
+        self, client: AsyncClient, manager_token, employee_user, skill
     ):
         created = await client.put(
-            f"/api/v1/assessments/{skill.id}",
+            f"/api/v1/assessments/{skill.id}?employee_id={employee_user.id}",
             json={"self_level": 2},
-            headers={"Authorization": f"Bearer {employee_token}"},
+            headers={"Authorization": f"Bearer {manager_token}"},
         )
         assessment_id = created.json()["id"]
         # Make another change
         await client.put(
-            f"/api/v1/assessments/{skill.id}",
-            json={"self_level": 4},
-            headers={"Authorization": f"Bearer {employee_token}"},
+            f"/api/v1/assessments/{skill.id}?employee_id={employee_user.id}",
+            json={"self_level": 3},
+            headers={"Authorization": f"Bearer {manager_token}"},
         )
         r = await client.get(
             f"/api/v1/assessments/{assessment_id}/history",
-            headers={"Authorization": f"Bearer {employee_token}"},
+            headers={"Authorization": f"Bearer {manager_token}"},
         )
         assert r.status_code == 200
         assert len(r.json()) >= 1
@@ -157,10 +153,10 @@ class TestMatrix:
 
 
 class TestBulkTarget:
-    async def test_set_bulk_target(self, client: AsyncClient, employee_token):
+    async def test_set_bulk_target(self, client: AsyncClient, manager_token):
         r = await client.put(
             "/api/v1/assessments/bulk-target",
-            json={"target_level": 4},
-            headers={"Authorization": f"Bearer {employee_token}"},
+            json={"target_level": 3},
+            headers={"Authorization": f"Bearer {manager_token}"},
         )
         assert r.status_code == 200

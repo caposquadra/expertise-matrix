@@ -1,7 +1,7 @@
 import uuid
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,6 +44,8 @@ async def _record_history(
 @router.get("", response_model=list[AssessmentOut])
 async def list_assessments(
     employee_id: str | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     current_user: Employee = Depends(get_current_user),
 ):
@@ -65,7 +67,7 @@ async def list_assessments(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    result = await db.execute(query)
+    result = await db.execute(query.offset(skip).limit(limit))
     return [AssessmentOut.model_validate(a) for a in result.scalars().all()]
 
 
@@ -142,6 +144,12 @@ async def upsert_assessment(
         db.add(assessment)
         await db.flush()
 
+    if current_user.role not in ("admin", "manager"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only managers can modify assessments outside review cycles",
+        )
+
     if body.target_level is not None:
         await _record_history(
             db,
@@ -153,40 +161,28 @@ async def upsert_assessment(
         )
         assessment.target_level = body.target_level
         assessment.updated_by = current_user.id
-    elif body.self_level is not None:
-        if current_user.role not in ("admin", "manager"):
-            await _record_history(
-                db,
-                assessment,
-                "self_level",
-                assessment.self_level,
-                body.self_level,
-                current_user.id,
-            )
-            assessment.self_level = body.self_level
-            assessment.updated_by = current_user.id
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only employees can set self_level",
-            )
-    elif body.manager_level is not None:
-        if current_user.role in ("admin", "manager"):
-            await _record_history(
-                db,
-                assessment,
-                "manager_level",
-                assessment.manager_level,
-                body.manager_level,
-                current_user.id,
-            )
-            assessment.manager_level = body.manager_level
-            assessment.updated_by = current_user.id
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only managers can set manager_level",
-            )
+    if body.self_level is not None:
+        await _record_history(
+            db,
+            assessment,
+            "self_level",
+            assessment.self_level,
+            body.self_level,
+            current_user.id,
+        )
+        assessment.self_level = body.self_level
+        assessment.updated_by = current_user.id
+    if body.manager_level is not None:
+        await _record_history(
+            db,
+            assessment,
+            "manager_level",
+            assessment.manager_level,
+            body.manager_level,
+            current_user.id,
+        )
+        assessment.manager_level = body.manager_level
+        assessment.updated_by = current_user.id
 
     await db.commit()
     await db.refresh(assessment)

@@ -61,7 +61,7 @@ async def complete_review_flow(
     for a in cycle["assessments"]:
         await client.put(
             f"/api/v1/reviews/{cycle['id']}/assessments/{a['skill_id']}",
-            json={"expert_level": 4},
+            json={"expert_level": 3},
             headers={"Authorization": f"Bearer {expert_token}"},
         )
 
@@ -127,11 +127,11 @@ class TestUpdateAssessment:
         a = cycle["assessments"][0]
         r = await client.put(
             f"/api/v1/reviews/{cycle['id']}/assessments/{a['skill_id']}",
-            json={"self_level": 4, "self_comment": "Expert level"},
+            json={"self_level": 3, "self_comment": "Expert level"},
             headers={"Authorization": f"Bearer {employee_token}"},
         )
         assert r.status_code == 200
-        assert r.json()["self_level"] == 4
+        assert r.json()["self_level"] == 3
         assert r.json()["self_comment"] == "Expert level"
 
     async def test_employee_cannot_set_manager_level(

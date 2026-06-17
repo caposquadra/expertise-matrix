@@ -1,6 +1,7 @@
 import logging
+from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,12 +64,16 @@ def _compute_score(
 
 @router.get("", response_model=list[EmployeeOut])
 async def list_employees(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     current_user: Employee = Depends(get_current_user),
 ):
     """List employees. Admins and managers see all; employees see only themselves."""
     if current_user.role in ("admin", "manager"):
-        result = await db.execute(select(Employee).order_by(Employee.full_name))
+        result = await db.execute(
+            select(Employee).order_by(Employee.full_name).offset(skip).limit(limit)
+        )
         return [EmployeeOut.model_validate(u) for u in result.scalars().all()]
     return [EmployeeOut.model_validate(current_user)]
 
@@ -212,15 +217,19 @@ async def get_bulk_scores(
         for t in grade_targets_result.scalars().all()
     }
 
+    assessments_result = await db.execute(
+        select(Assessment).where(Assessment.employee_id.in_(body.employee_ids))
+    )
+    assessments_by_employee: dict[str, list[Assessment]] = defaultdict(list)
+    for a in assessments_result.scalars().all():
+        assessments_by_employee[str(a.employee_id)].append(a)
+
     result: dict[str, EmployeeScoreOut] = {}
     for eid in body.employee_ids:
         emp = employees_map.get(eid)
         if emp is None:
             continue
-        assessments_result = await db.execute(
-            select(Assessment).where(Assessment.employee_id == eid)
-        )
-        assessments = list(assessments_result.scalars().all())
+        assessments = assessments_by_employee.get(eid, [])
         score = _compute_score(skills, assessments, emp.grade)
         if emp.grade:
             next_grade = NEXT_GRADE.get(emp.grade.lower())

@@ -193,8 +193,8 @@ export function IprPage() {
       <Modal opened={!!addGoalModal} onClose={() => setAddGoalModal(null)} title="Добавить цель" radius="lg" shadow="lg">
         <Stack>
           <Select label="Навык" data={goalOptions} value={form.skill_id} onChange={(v) => setForm({ ...form, skill_id: v ?? "" })} searchable required />
-          <TextInput label="Текущий уровень" type="number" min={1} max={4} value={form.current_level} onChange={(e) => setForm({ ...form, current_level: e.target.value })} />
-          <TextInput label="Целевой уровень" type="number" min={1} max={4} value={form.target_level} onChange={(e) => setForm({ ...form, target_level: e.target.value })} />
+          <TextInput label="Текущий уровень" type="number" min={1} max={3} value={form.current_level} onChange={(e) => setForm({ ...form, current_level: e.target.value })} />
+          <TextInput label="Целевой уровень" type="number" min={1} max={3} value={form.target_level} onChange={(e) => setForm({ ...form, target_level: e.target.value })} />
           <TextInput label="Дедлайн (YYYY-MM-DD)" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
           <Textarea label="Заметки" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           <Button onClick={addGoal} color="indigo">Добавить</Button>

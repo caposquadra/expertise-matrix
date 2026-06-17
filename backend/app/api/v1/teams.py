@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_admin_user, get_current_user
 from app.core.database import get_db
@@ -40,7 +41,9 @@ async def list_teams(
     current_user: Employee = Depends(get_current_user),
 ):
     """List all teams."""
-    result = await db.execute(select(Team).order_by(Team.name))
+    result = await db.execute(
+        select(Team).options(selectinload(Team.employees)).order_by(Team.name)
+    )
     teams = result.scalars().all()
     out = []
     for t in teams:
@@ -62,7 +65,9 @@ async def get_team(
     current_user: Employee = Depends(get_current_user),
 ):
     """Get a single team."""
-    result = await db.execute(select(Team).where(Team.id == team_id))
+    result = await db.execute(
+        select(Team).options(selectinload(Team.employees)).where(Team.id == team_id)
+    )
     team = result.scalar_one_or_none()
     if team is None:
         raise HTTPException(
@@ -133,7 +138,9 @@ async def delete_team(
     admin: Employee = Depends(get_admin_user),
 ):
     """Delete a team (admin only)."""
-    result = await db.execute(select(Team).where(Team.id == team_id))
+    result = await db.execute(
+        select(Team).options(selectinload(Team.employees)).where(Team.id == team_id)
+    )
     team = result.scalar_one_or_none()
     if team is None:
         raise HTTPException(

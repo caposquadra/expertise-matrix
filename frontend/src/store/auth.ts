@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import client from "../api/client";
+import client, { setAccessToken } from "../api/client";
 
 export interface User {
   id: string;
@@ -24,10 +24,9 @@ export const useAuth = create<AuthState>((set) => ({
     try {
       await client.post("/auth/logout");
     } catch {
-      // ignore — tokens will be cleared anyway
+      // ignore — server will clear cookie
     }
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    setAccessToken(null);
     set({ user: null });
   },
 }));

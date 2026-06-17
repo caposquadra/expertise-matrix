@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,11 +17,19 @@ router = APIRouter(prefix="/skills", tags=["skills"])
 @router.get("", response_model=list[SkillOut])
 async def list_skills(
     category: str | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     _: Employee = Depends(get_current_user),
 ):
     """List active skills. Optional category filter."""
-    query = select(Skill).where(Skill.is_active).order_by(Skill.sort_order, Skill.name)
+    query = (
+        select(Skill)
+        .where(Skill.is_active)
+        .order_by(Skill.sort_order, Skill.name)
+        .offset(skip)
+        .limit(limit)
+    )
     if category:
         query = query.where(Skill.category == category)
     result = await db.execute(query)

@@ -407,7 +407,8 @@ async def review_cycles_summary(
 
     return ReviewCyclesSummaryOut(
         status_counts=[
-            StatusCountItem(status=s, count=counts.get(s, 0)) for s in REVIEW_STATUSES
+            StatusCountItem(status=s, count=counts.get(s, 0))
+            for s in ACTIVE_REVIEW_STATUSES
         ],
         total_active=total_active,
         employees_without_self_assessment=without_self,

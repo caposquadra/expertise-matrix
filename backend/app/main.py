@@ -1,5 +1,7 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +19,17 @@ from app.api.v1 import (
     teams_router,
 )
 
-app = FastAPI(title="Expertise Matrix API", version="0.1.0")
+app = FastAPI(
+    title="Матрица компетенций департамента тестирования API", version="0.1.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(employees_router, prefix="/api/v1")
@@ -30,6 +42,14 @@ app.include_router(teams_router, prefix="/api/v1")
 app.include_router(reviews_router, prefix="/api/v1")
 
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
 _openapi_schema: dict | None = None
 
 
@@ -39,7 +59,7 @@ def custom_openapi() -> dict:
         return _openapi_schema
 
     _openapi_schema = get_openapi(
-        title="Expertise Matrix API",
+        title="Матрица компетенций департамента тестирования API",
         version="0.1.0",
         routes=app.routes,
     )

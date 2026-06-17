@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Title, Tabs, Table, Badge, Button, Group, Modal, TextInput, Loader, Center, ActionIcon, ThemeIcon, Card, Text, Select, NumberInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconEdit, IconTrash, IconPlus, IconDownload, IconSettings, IconKey } from "@tabler/icons-react";
-import client from "../api/client";
+import client, { getAccessToken } from "../api/client";
 import { translateRole, translateGrade } from "../constants";
 
 interface Skill { id: string; name: string; category: string; description: string | null; weight: number; sort_order: number; is_active: boolean; }
@@ -69,7 +69,7 @@ export function AdminPage() {
 
   const downloadExport = (format: "csv" | "excel") => {
     const url = `/api/v1/export/${format}`;
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.blob())
       .then((blob) => {

@@ -10,6 +10,7 @@ os.environ.setdefault(
     "postgresql+asyncpg://app:app_secret@postgres:5432/expertise_matrix_test",
 )
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only")
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 # Ensure backend/ is on sys.path for CI and local development
 _backend_root = str(Path(__file__).resolve().parent.parent)

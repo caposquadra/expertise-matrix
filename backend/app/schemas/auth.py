@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 
+from enum import Enum
+
 from pydantic import BaseModel, EmailStr
+
+
+class RoleEnum(str, Enum):
+    admin = "admin"
+    manager = "manager"
+    employee = "employee"
+    expert = "expert"
 
 
 class LoginRequest(BaseModel):
@@ -13,7 +22,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     full_name: str
-    role: str = "employee"
+    role: RoleEnum = RoleEnum.employee
     grade: str | None = None
     team_id: uuid.UUID | None = None
 

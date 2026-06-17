@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_admin_user, get_current_user, require_role
 from app.api.v1.constants import GRADE_TARGETS, NEXT_GRADE
+from app.core.logic import fill_default_assessments
 from app.core.database import get_db
 from app.core.security import hash_password
 from app.models import Assessment, Employee, EmployeeProfile, Skill, SkillGradeTarget
@@ -122,6 +123,8 @@ async def create_employee(
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    if user.grade:
+        await fill_default_assessments(db, user.id, user.grade)
     logger.info("Admin %s created employee %s (%s)", admin.email, user.email, user.role)
     return EmployeeOut.model_validate(user)
 

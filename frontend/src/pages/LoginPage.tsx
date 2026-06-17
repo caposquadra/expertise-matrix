@@ -92,7 +92,7 @@ export function LoginPage() {
                 <IconStar size={24} />
               </div>
               <div>
-                <Text fw={600} size="sm">4 уровня</Text>
+                <Text fw={600} size="sm">3 уровня</Text>
                 <Text size="xs" opacity={0.7}>оценки компетенций</Text>
               </div>
             </Group>

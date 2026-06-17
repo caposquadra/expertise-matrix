@@ -13,12 +13,15 @@ export interface User {
 
 interface AuthState {
   user: User | null;
+  initialized: boolean;
   setUser: (user: User) => void;
   logout: () => Promise<void>;
+  restoreSession: () => Promise<void>;
 }
 
 export const useAuth = create<AuthState>((set) => ({
   user: null,
+  initialized: false,
   setUser: (user) => set({ user }),
   logout: async () => {
     try {
@@ -28,5 +31,15 @@ export const useAuth = create<AuthState>((set) => ({
     }
     setAccessToken(null);
     set({ user: null });
+  },
+  restoreSession: async () => {
+    try {
+      const { data } = await client.post("/auth/refresh", {});
+      setAccessToken(data.access_token);
+      const me = await client.get("/auth/me");
+      set({ user: me.data, initialized: true });
+    } catch {
+      set({ initialized: true });
+    }
   },
 }));

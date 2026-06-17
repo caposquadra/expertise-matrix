@@ -80,17 +80,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: pip install -r backend/requirements.txt pytest-cov
-      - name: Run backend tests (debug — subset)
-        run: pytest tests/test_auth.py -v --tb=short
+      - name: Run backend tests
+        run: pytest tests/ -v --ignore=tests/unit/test_contract.py --tb=short
         working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://app:app_secret@localhost:5432/expertise_matrix_test
           SECRET_KEY: ${{ env.SECRET_KEY }}
           PYTHONPATH: .
-      - uses: codecov/codecov-action@v5
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
 
   test-frontend:
     needs: [lint-frontend, typecheck-frontend]

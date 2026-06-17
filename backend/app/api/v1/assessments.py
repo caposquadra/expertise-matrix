@@ -85,9 +85,9 @@ async def get_matrix(
 async def bulk_set_target(
     body: BulkTargetUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Employee = Depends(get_current_user),
+    current_user: Employee = Depends(get_manager_user),
 ):
-    """Set the same target_level for all skills of the current user."""
+    """Set the same target_level for all skills of the current user (manager only)."""
     result = await db.execute(
         select(Assessment).where(Assessment.employee_id == current_user.id)
     )

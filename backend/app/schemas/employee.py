@@ -1,7 +1,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
+
+from app.schemas.auth import RoleEnum
 
 
 class EmployeeProfileUpdate(BaseModel):
@@ -67,10 +69,10 @@ class EmployeeProfileOut(BaseModel):
 
 
 class EmployeeCreate(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     full_name: str
-    role: str = "employee"
+    role: RoleEnum = RoleEnum.employee
     grade: str | None = None
     team_id: uuid.UUID | None = None
 

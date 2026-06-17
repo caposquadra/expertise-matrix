@@ -1,14 +1,14 @@
 import logging
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_admin_user, get_current_user
-from app.api.v1.constants import GRADE_TARGETS
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.limiter import limiter
+from app.core.logic import fill_default_assessments
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -16,7 +16,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.models import Assessment, Employee, Skill
+from app.models import Employee
 from app.schemas import (
     LoginRequest,
     RegisterRequest,
@@ -36,7 +36,7 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         key=REFRESH_COOKIE_KEY,
         value=token,
         httponly=True,
-        secure=False,  # set True in production with HTTPS
+        secure=settings.secure_cookie,
         samesite="lax",
         max_age=settings.refresh_token_expire_days * 86400,
         path="/api/v1/auth",
@@ -52,26 +52,10 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
-async def _fill_default_assessments(
-    db: AsyncSession, employee_id: uuid.UUID, grade: str
-) -> None:
-    default_level = GRADE_TARGETS.get(grade.lower())
-    if default_level is None:
-        return
-    result = await db.execute(select(Skill).where(Skill.is_active))
-    skills = result.scalars().all()
-    for skill in skills:
-        assessment = Assessment(
-            employee_id=employee_id,
-            skill_id=skill.id,
-            self_level=default_level,
-        )
-        db.add(assessment)
-    await db.commit()
-
-
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     body: LoginRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -172,7 +156,7 @@ async def register(
     await db.commit()
     await db.refresh(user)
     if user.grade:
-        await _fill_default_assessments(db, user.id, user.grade)
+        await fill_default_assessments(db, user.id, user.grade)
     logger.info("Admin %s registered user %s", admin.email, user.email)
     return UserOut.model_validate(user)
 

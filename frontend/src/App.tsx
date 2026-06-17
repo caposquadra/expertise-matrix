@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
+import { Loader, Center } from "@mantine/core";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
@@ -10,8 +12,23 @@ import { EmployeeDetailPage } from "./pages/EmployeeDetailPage";
 import { IprPage } from "./pages/IprPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
 import { AdminPage } from "./pages/AdminPage";
+import { useAuth } from "./store/auth";
 
 export function App() {
+  const { initialized, restoreSession } = useAuth();
+
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
+
+  if (!initialized) {
+    return (
+      <Center h="100vh">
+        <Loader />
+      </Center>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

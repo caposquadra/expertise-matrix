@@ -4,6 +4,7 @@ from app.models.skill import Skill
 from app.models.assessment import Assessment, AssessmentHistory
 from app.models.ipr import IprPlan, IprGoal
 from app.models.review import ReviewCycle, ReviewAssessment
+from app.models.skill_target import SkillGradeTarget
 
 __all__ = [
     "Employee",
@@ -16,4 +17,5 @@ __all__ = [
     "IprGoal",
     "ReviewCycle",
     "ReviewAssessment",
+    "SkillGradeTarget",
 ]

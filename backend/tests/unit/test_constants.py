@@ -11,9 +11,9 @@ from app.api.v1.constants import (
 
 class TestGradeTargets:
     def test_known_grades(self):
-        assert GRADE_TARGETS["junior"] == 2
-        assert GRADE_TARGETS["middle"] == 3
-        assert GRADE_TARGETS["senior"] == 4
+        assert GRADE_TARGETS["junior"] == 1
+        assert GRADE_TARGETS["middle"] == 2
+        assert GRADE_TARGETS["senior"] == 3
 
     def test_unknown_grade_fallback(self):
         assert GRADE_TARGETS.get("lead", 3) == 3

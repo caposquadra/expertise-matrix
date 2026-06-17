@@ -116,9 +116,13 @@ export function DashboardPage() {
           </Group>
           {expandedStatus && cycleSummary.status_employees[expandedStatus]?.map((e) => (
             <Group key={e.cycle_id} justify="space-between" mb="xs" ml="sm">
-              <Anchor component={Link} to={`/employees/${e.employee_id}`} size="sm">
-                {e.employee_name}
-              </Anchor>
+              <div>
+                <Anchor component={Link} to={`/employees/${e.employee_id}`} size="sm">
+                  {e.employee_name}
+                </Anchor>
+                {e.grade && <Badge size="xs" color="blue" variant="light" ml={6}>{translateGrade(e.grade)}</Badge>}
+                {e.profile_grade != null && <Badge size="xs" color="indigo" variant="light" ml={4}>{e.profile_grade}</Badge>}
+              </div>
               <Badge color={statusColors[e.status!] || "gray"} variant="light" size="sm">
                 {e.days_in_status} дн.
               </Badge>
@@ -135,9 +139,13 @@ export function DashboardPage() {
           </Group>
             {cycleSummary.employees_without_self_assessment.map((e) => (
               <Group key={e.employee_id} justify="space-between" mb="xs">
-                <Anchor component={Link} to={`/employees/${e.employee_id}`} size="sm">
-                  {e.employee_name}
-                </Anchor>
+                <div>
+                  <Anchor component={Link} to={`/employees/${e.employee_id}`} size="sm">
+                    {e.employee_name}
+                  </Anchor>
+                  {e.grade && <Badge size="xs" color="blue" variant="light" ml={6}>{translateGrade(e.grade)}</Badge>}
+                  {e.profile_grade != null && <Badge size="xs" color="indigo" variant="light" ml={4}>{e.profile_grade}</Badge>}
+                </div>
                 <Badge color={e.cycle_id ? "red" : "gray"} variant="light">
                   {e.cycle_id ? `${e.days_in_status} дн. в черновике` : "Нет заявок"}
                 </Badge>
@@ -225,7 +233,7 @@ export function DashboardPage() {
                     </Group>
                   </Card>
                   <Card padding="sm" radius="md" withBorder style={{ minWidth: 110 }}>
-                    <Text size="xs" c="dimmed" mb={2}>Цель по грейду</Text>
+                    <Text size="xs" c="dimmed" mb={2}>Цель</Text>
                     <Text fw={700} size="md" c="indigo">
                       {p.target_score != null ? `${Math.round(p.target_score)} баллов` : "—"}
                     </Text>

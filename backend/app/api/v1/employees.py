@@ -6,10 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_admin_user, get_current_user, require_role
-from app.api.v1.constants import GRADE_TARGETS
+from app.api.v1.constants import GRADE_TARGETS, NEXT_GRADE
 from app.core.database import get_db
 from app.core.security import hash_password
-from app.models import Assessment, Employee, EmployeeProfile, Skill
+from app.models import Assessment, Employee, EmployeeProfile, Skill, SkillGradeTarget
 from app.schemas.employee import (
     EmployeeCreate,
     EmployeeOut,
@@ -32,6 +32,9 @@ class EmployeeScoreOut(BaseModel):
     target_score: int | None
     total_weight: int
     assessed_weight: int
+    profile_grade: float | None = None
+    profile_avg: float | None = None
+    position: str | None = None
 
 
 def _compute_score(
@@ -196,6 +199,19 @@ async def get_bulk_scores(
     )
     employees_map = {str(e.id): e for e in employees.scalars().all()}
 
+    profile_result = await db.execute(
+        select(EmployeeProfile).where(
+            EmployeeProfile.employee_id.in_(body.employee_ids)
+        )
+    )
+    profiles_map = {str(p.employee_id): p for p in profile_result.scalars().all()}
+
+    grade_targets_result = await db.execute(select(SkillGradeTarget))
+    grade_targets = {
+        (str(t.skill_id), t.grade): t.expected_level
+        for t in grade_targets_result.scalars().all()
+    }
+
     result: dict[str, EmployeeScoreOut] = {}
     for eid in body.employee_ids:
         emp = employees_map.get(eid)
@@ -205,7 +221,37 @@ async def get_bulk_scores(
             select(Assessment).where(Assessment.employee_id == eid)
         )
         assessments = list(assessments_result.scalars().all())
-        result[eid] = _compute_score(skills, assessments, emp.grade)
+        score = _compute_score(skills, assessments, emp.grade)
+        if emp.grade:
+            next_grade = NEXT_GRADE.get(emp.grade.lower())
+            target_sum = 0
+            for skill in skills:
+                expected = (
+                    grade_targets.get((str(skill.id), next_grade))
+                    if next_grade
+                    else None
+                )
+                if expected is not None:
+                    target_sum += expected * skill.weight
+            if target_sum > 0:
+                score.target_score = target_sum
+        profile = profiles_map.get(eid)
+        if profile:
+            vals = [
+                profile.experience,
+                profile.education,
+                profile.task_complexity,
+                profile.autonomy,
+                profile.communication,
+                profile.control,
+                profile.mentoring,
+                profile.responsibility,
+                profile.technical_competencies,
+            ]
+            score.profile_grade = round(sum(vals) / len(vals), 1)
+            score.profile_avg = score.profile_grade
+            score.position = profile.position or None
+        result[eid] = score
 
     return result
 

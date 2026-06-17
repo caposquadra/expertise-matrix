@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, Text, Group, Badge, Button, Modal, TextInput, NumberInput, Textarea, Stack, SimpleGrid, Loader, Center, Progress } from "@mantine/core";
+import { Card, Text, Group, Badge, Button, Modal, TextInput, NumberInput, Textarea, Stack, SimpleGrid, Loader, Center, Grid, Box, Tooltip } from "@mantine/core";
 import client from "../api/client";
 import { useAuth } from "../store/auth";
 import type { EmployeeProfile } from "../types";
@@ -22,7 +22,7 @@ const NUMERIC_LABELS: { key: keyof EmployeeProfile; label: string }[] = [
   { key: "control", label: "Контроль" },
   { key: "mentoring", label: "Наставничество" },
   { key: "responsibility", label: "Ответственность" },
-  { key: "technical_competencies", label: "Технические компетенции" },
+  { key: "technical_competencies", label: "Техн. компетенции" },
 ];
 
 interface Props {
@@ -138,37 +138,76 @@ export function EmployeeProfileBlock({ employeeId }: Props) {
         )}
 
         {profile && (
-          <>
-            {FIELDS.map(({ key, label }) => (
-              <Group key={key} mb={2}>
-                <Text size="sm" c="dimmed" w={140}>{label}</Text>
-                <Text size="sm">{String(profile[key] ?? "—")}</Text>
-              </Group>
-            ))}
-
-            <Text fw={600} size="sm" mt="md" mb="sm">Оценки (1–12)</Text>
-            <SimpleGrid cols={{ base: 1, md: 2 }}>
-              {NUMERIC_LABELS.map(({ key, label }) => {
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              {FIELDS.map(({ key, label }) => (
+                <Group key={key} mb={2}>
+                  <Text size="sm" c="dimmed" w={140}>{label}</Text>
+                  <Text size="sm">{String(profile[key] ?? "—")}</Text>
+                </Group>
+              ))}
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              {NUMERIC_LABELS.slice(0, 5).map(({ key, label }) => {
                 const val = profile[key] as number;
+                const segColor = val >= 8 ? "green" : val >= 5 ? "yellow" : "red";
                 return (
-                  <Group key={key} gap="xs" wrap="nowrap">
+                  <Group key={key} gap="xs" wrap="nowrap" mb={2}>
                     <Text size="sm" w={140}>{label}</Text>
-                    <Progress.Root w="100%" size={20} style={{ flex: 1 }}>
-                      <Progress.Section value={(val / 12) * 100} color={val >= 8 ? "green" : val >= 5 ? "yellow" : "red"} />
-                    </Progress.Root>
-                    <Text size="sm" fw={600} w={40} ta="right">{val}/12</Text>
+                    <Tooltip label={`${val} / 12`}>
+                      <Group gap={2} style={{ flex: 1, maxWidth: 260 }}>
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <Box
+                            key={i}
+                            style={{
+                              flex: 1,
+                              height: 10,
+                              borderRadius: 2,
+                              backgroundColor: i < val ? `var(--mantine-color-${segColor}-6)` : "var(--mantine-color-gray-2)",
+                            }}
+                          />
+                        ))}
+                      </Group>
+                    </Tooltip>
                   </Group>
                 );
               })}
-            </SimpleGrid>
-
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              {NUMERIC_LABELS.slice(5).map(({ key, label }) => {
+                const val = profile[key] as number;
+                const segColor = val >= 8 ? "green" : val >= 5 ? "yellow" : "red";
+                return (
+                  <Group key={key} gap="xs" wrap="nowrap" mb={2}>
+                    <Text size="sm" w={140}>{label}</Text>
+                    <Tooltip label={`${val} / 12`}>
+                      <Group gap={2} style={{ flex: 1, maxWidth: 260 }}>
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <Box
+                            key={i}
+                            style={{
+                              flex: 1,
+                              height: 10,
+                              borderRadius: 2,
+                              backgroundColor: i < val ? `var(--mantine-color-${segColor}-6)` : "var(--mantine-color-gray-2)",
+                            }}
+                          />
+                        ))}
+                      </Group>
+                    </Tooltip>
+                  </Group>
+                );
+              })}
+            </Grid.Col>
             {profile.notes && (
-              <Text size="sm" mt="sm">
-                <Text span fw={600}>Особенности: </Text>
-                {profile.notes}
-              </Text>
+              <Grid.Col span={12}>
+                <Text size="sm" mt="sm">
+                  <Text span fw={600}>Особенности: </Text>
+                  {profile.notes}
+                </Text>
+              </Grid.Col>
             )}
-          </>
+          </Grid>
         )}
       </Card>
 

@@ -1,4 +1,4 @@
-GRADE_TARGETS: dict[str, int] = {"junior": 2, "middle": 3, "senior": 4}
+GRADE_TARGETS: dict[str, int] = {"junior": 1, "middle": 2, "senior": 3}
 
 NEXT_GRADE: dict[str, str] = {
     "junior": "middle",

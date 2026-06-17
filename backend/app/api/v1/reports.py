@@ -10,7 +10,6 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_manager_user
 from app.api.v1.constants import (
     ACTIVE_REVIEW_STATUSES,
-    GRADE_TARGETS,
     NEXT_GRADE,
     PROMOTION_THRESHOLD,
     REVIEW_STATUSES,
@@ -20,7 +19,9 @@ from app.models import (
     Assessment,
     AssessmentHistory,
     Employee,
+    EmployeeProfile,
     Skill,
+    SkillGradeTarget,
     ReviewCycle,
     ReviewAssessment,
 )
@@ -297,6 +298,26 @@ async def review_cycles_summary(
     counts = {s: all_statuses.count(s) for s in REVIEW_STATUSES}
     total_active = sum(counts.get(s, 0) for s in ACTIVE_REVIEW_STATUSES)
 
+    profiles_result = await db.execute(select(EmployeeProfile))
+    profile_grades = {
+        str(p.employee_id): round(
+            (
+                p.experience
+                + p.education
+                + p.task_complexity
+                + p.autonomy
+                + p.communication
+                + p.control
+                + p.mentoring
+                + p.responsibility
+                + p.technical_competencies
+            )
+            / 9,
+            1,
+        )
+        for p in profiles_result.scalars().all()
+    }
+
     now = datetime.now(timezone.utc)
     without = await db.execute(
         select(ReviewCycle)
@@ -331,6 +352,8 @@ async def review_cycles_summary(
                 EmployeeCycleInfo(
                     employee_name=rc.employee.full_name,
                     employee_id=str(rc.employee_id),
+                    grade=rc.employee.grade,
+                    profile_grade=profile_grades.get(str(rc.employee_id)),
                     cycle_id=str(rc.id),
                     status=rc.status,
                     days_in_status=days,
@@ -353,6 +376,8 @@ async def review_cycles_summary(
             EmployeeCycleInfo(
                 employee_name=emp.full_name,
                 employee_id=str(emp.id),
+                grade=emp.grade,
+                profile_grade=profile_grades.get(str(emp.id)),
             )
         )
 
@@ -372,6 +397,8 @@ async def review_cycles_summary(
                 EmployeeCycleInfo(
                     employee_name=rc.employee.full_name,
                     employee_id=str(rc.employee_id),
+                    grade=rc.employee.grade,
+                    profile_grade=profile_grades.get(str(rc.employee_id)),
                     cycle_id=str(rc.id),
                     status=rc.status,
                     days_in_status=days,
@@ -485,8 +512,15 @@ async def promotion_ready(
     db: AsyncSession = Depends(get_db),
     _: Employee = Depends(get_manager_user),
 ):
-    weight_res = await db.execute(select(func.sum(Skill.weight)).where(Skill.is_active))
-    total_weight = weight_res.scalar() or 1
+    grade_targets_result = await db.execute(select(SkillGradeTarget))
+    grade_targets = {
+        (str(t.skill_id), t.grade): t.expected_level
+        for t in grade_targets_result.scalars().all()
+    }
+
+    skill_result = await db.execute(select(Skill).where(Skill.is_active))
+    all_skills = list(skill_result.scalars().all())
+    skill_weights = {str(s.id): s.weight for s in all_skills}
 
     emp_result = await db.execute(
         select(Employee).where(
@@ -511,6 +545,17 @@ async def promotion_ready(
         for eid, sl, ml, w in ass_rows.all():
             emp_assessments[eid].append((sl, ml, w))
 
+    def compute_target(emp: Employee) -> float:
+        next_grade = NEXT_GRADE.get(emp.grade.lower()) if emp.grade else None
+        if next_grade is None:
+            return 0.0
+        total = 0.0
+        for skill in all_skills:
+            expected = grade_targets.get((str(skill.id), next_grade))
+            if expected is not None:
+                total += expected * skill_weights.get(str(skill.id), 1)
+        return total
+
     def compute_score(emp: Employee) -> float:
         data = emp_assessments.get(emp.id, [])
         total = 0.0
@@ -524,13 +569,14 @@ async def promotion_ready(
     for emp in employees:
         if emp.grade is None:
             continue
-        g = emp.grade.lower()
-        level = GRADE_TARGETS.get(g, 3)
         total_mgr = compute_score(emp)
         if total_mgr == 0:
             continue
-        target_score = level * total_weight
+        target_score = compute_target(emp)
+        if target_score == 0:
+            continue
         if abs(total_mgr - target_score) / target_score <= PROMOTION_THRESHOLD:
+            g = emp.grade.lower()
             all_candidates.append(
                 PromotionReadyOut(
                     employee_name=emp.full_name,
@@ -546,10 +592,12 @@ async def promotion_ready(
         for emp in employees:
             if emp.grade is None:
                 continue
-            g = emp.grade.lower()
-            level = GRADE_TARGETS.get(g, 3)
             total_mgr = compute_score(emp)
             if total_mgr > 0:
+                target_score = compute_target(emp)
+                if target_score == 0:
+                    continue
+                g = emp.grade.lower()
                 all_candidates.append(
                     PromotionReadyOut(
                         employee_name=emp.full_name,
@@ -557,7 +605,7 @@ async def promotion_ready(
                         current_grade=emp.grade,
                         target_grade=NEXT_GRADE.get(g, g),
                         total_score=round(total_mgr, 2),
-                        target_score=round(float(level * total_weight), 2),
+                        target_score=round(float(target_score), 2),
                     )
                 )
 

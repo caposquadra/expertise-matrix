@@ -12,3 +12,4 @@ dist/
 htmlcov/
 .coverage
 docker/demo-images.tar
+frontend/test-results/
